@@ -32,7 +32,7 @@ html, body, [class*="css"] {
     font-size: 1.05rem;
     color: #64748b;
     font-weight: 500;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -90,7 +90,7 @@ html, body, [class*="css"] {
 .line-item-box { background: #f8fafc; padding: 18px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
 .line-item-header { display: flex; justify-content: space-between; font-weight: 600; color: #1e293b; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;}
 .line-item-row { display: flex; justify-content: space-between; font-size: 14px; color: #475569; margin-bottom: 10px; align-items: center;}
-.line-item-tag { background-color: #e0e7ff; color: #4f46e5; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; display: inline-block;}
+.line-item-tag { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; display: inline-block;}
 .line-hts { text-decoration: underline; font-weight: 500; color: #334155; }
 .line-val { font-weight: 600; color: #0f172a; }
 </style>
@@ -99,6 +99,9 @@ html, body, [class*="css"] {
 # Special Header
 st.markdown('<div class="main-title">🌐 TradePro Tariff Simulator</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Advanced Customs Duty & Compliance Engine</div>', unsafe_allow_html=True)
+
+# SECTION 122 GLOBAL ALERT
+st.error("🚨 **EXECUTIVE ORDER:** A **15% global tariff** under **Section 122** has been implemented for 150 days. This applies to all origins unless specifically exempted in Annex II.")
 st.markdown("---")
 
 # --- LIST OF ALL COUNTRIES (WITH ISO CODES) ---
@@ -212,6 +215,7 @@ S301_FILENAME = 'section301_rates.csv'
 S232_FILENAME = 'section232_rates.csv'
 ADCVD_FILENAME = 'adcvd_warnings.csv'
 PGA_FILENAME = 'hts_pga_report.csv'
+S122_FILENAME = 'sec122_exemptions.csv'
 
 @st.cache_data
 def load_hts_data():
@@ -254,11 +258,25 @@ def load_pga_data():
         return df
     return None
 
+@st.cache_data
+def load_122_data():
+    if os.path.exists(S122_FILENAME):
+        try:
+            df = pd.read_csv(S122_FILENAME)
+            df.columns = df.columns.str.strip()
+            col_name = 'HTSUS' if 'HTSUS' in df.columns else df.columns[0]
+            df['clean_hts'] = df[col_name].astype(str).str.replace('.', '', regex=False).str.strip()
+            return df
+        except:
+            return None
+    return None
+
 df = load_hts_data()
 df_301 = load_301_data()
 df_232 = load_232_data()
 df_adcvd = load_adcvd_data()
 df_pga = load_pga_data()
+df_122 = load_122_data()
 
 # --- LAYOUT (LEFT 40%, RIGHT 60%) ---
 left_col, right_col = st.columns([4, 6], gap="large")
@@ -267,9 +285,7 @@ with left_col:
     st.subheader("Calculator")
     with st.container(border=True):
         if df is not None and not df.empty:
-            # Filter out Chapter 99 items so they don't clog up the dropdown
             search_df = df[~df['clean_htsno'].str.startswith('99')]
-            
             selected_item = st.selectbox(
                 "Product or HTS Code", 
                 options=search_df['display_name'].tolist(),
@@ -296,6 +312,7 @@ with left_col:
         hts6_input = clean_input[:6]
         hts4_input = clean_input[:4]
 
+        # --- SECTION 232 SPLIT LOGIC ---
         is_split_tariff = False
         tariff_cat = ""
         metal_type = ""
@@ -329,6 +346,49 @@ with left_col:
                     metal_pct = st.number_input(f"% of {metal_type} Content by Value", min_value=0.0, max_value=100.0, value=100.0, step=1.0)
                 else:
                     metal_pct = 100.0
+
+        # --- SECTION 122 EXEMPTION QUESTIONNAIRE ---
+        s122_eligible = False
+        s122_scope = ""
+        s122_desc = ""
+
+        if clean_input and df_122 is not None and not df_122.empty:
+            match_122 = df_122[df_122['clean_hts'] == hts10_input]
+            if match_122.empty: match_122 = df_122[df_122['clean_hts'] == hts8_input]
+            if match_122.empty: match_122 = df_122[df_122['clean_hts'] == hts6_input]
+            
+            if not match_122.empty:
+                s122_eligible = True
+                
+                # Check for "Scope Limitations" or "Notes" column names
+                if 'Scope Limitations' in match_122.columns:
+                    s122_scope = str(match_122.iloc[0]['Scope Limitations']).strip()
+                elif 'Notes' in match_122.columns:
+                    s122_scope = str(match_122.iloc[0]['Notes']).strip()
+                
+                if 'Description' in match_122.columns:
+                    s122_desc = str(match_122.iloc[0]['Description']).strip()
+
+        claim_122 = "No"
+        if s122_eligible:
+            st.markdown("---")
+            st.caption("**🛡️ Section 122 Global Tariff Exemption**")
+            
+            if s122_scope.lower() == 'pharma':
+                st.info("This item is conditionally exempt from Sec 122 IF used for non-patented pharmaceutical applications.")
+                claim_122 = st.selectbox("Claim Pharma Exemption?", ["No", "Yes"], index=0)
+            elif s122_scope.lower() == 'aircraft':
+                st.info("This item is conditionally exempt from Sec 122 IF used for civil aircraft parts/components.")
+                claim_122 = st.selectbox("Claim Civil Aircraft Exemption?", ["No", "Yes"], index=0)
+            elif s122_scope.lower() == 'ex' or 'ex ' in s122_scope.lower() or 'addition' in s122_scope.lower():
+                st.info(f"This item is conditionally exempt from Sec 122 IF it exactly matches: {s122_desc}")
+                claim_122 = st.selectbox("Claim Specific Product Exemption?", ["No", "Yes"], index=0)
+            elif s122_scope.lower() == 'nan' or s122_scope == '' or s122_scope.lower() == 'none':
+                st.success("This HTS code is unconditionally exempt from the Section 122 Global Tariff per Annex II.")
+                claim_122 = "Yes"
+            else:
+                st.info(f"This item is conditionally exempt from Sec 122 under limitation: {s122_scope}")
+                claim_122 = st.selectbox("Do you meet this condition?", ["No", "Yes"], index=0)
 
     st.write("") 
     run_btn = st.button("🚀 Calculate Duties", type="primary", use_container_width=True)
@@ -385,7 +445,6 @@ with right_col:
                             duty_label = f"FTA Duty"
                             fta_applied = True
                 
-                # COMPOUND RATE PARSER (Cleans footnote like "1/", checks for ¢/kg)
                 duty_rate_display = str(active_rate_text).replace(' 1/', '').strip()
                 parsed_rate = 0.0
                 has_specific_duty = False
@@ -397,12 +456,10 @@ with right_col:
                     if "¢" in duty_rate_display or "/" in duty_rate_display or "cents" in duty_rate_display.lower() or "+" in duty_rate_display:
                         has_specific_duty = True
                         
-                    # Extract the percentage part specifically for the math calculation
                     pct_match = re.search(r'(\d+(\.\d+)?)%', duty_rate_display)
                     if pct_match:
                         parsed_rate = float(pct_match.group(1))
                     else:
-                        # Fallback for flat numbers, but only if it's not a pure specific rate
                         if not has_specific_duty:
                             numbers = re.findall(r"[-+]?\d*\.\d+|\d+", duty_rate_display)
                             if numbers: parsed_rate = float(numbers[0])
@@ -430,8 +487,18 @@ with right_col:
                         elif iso_code in EU_COUNTRIES and "EU" in cat_rules: s232_rate, s232_heading = cat_rules["EU"]
                         else: s232_rate, s232_heading = cat_rules["DEFAULT"]
 
-                # --- 4. MATH ---
-                duty, s301, s232 = 0.0, 0.0, 0.0
+                # --- 4. SEC 122 (Global Temporary Tariff) ---
+                s122_rate = 15.0
+                s122_tag_label = "Sec 122 Global Tariff"
+                s122_tag_color = "background-color: #fee2e2; color: #e11d48;" # Red
+                
+                if claim_122 == "Yes":
+                    s122_rate = 0.0
+                    s122_tag_label = "Sec 122 (EXEMPT)"
+                    s122_tag_color = "background-color: #dcfce7; color: #166534;" # Green
+
+                # --- 5. MATH ---
+                duty, s301, s232, s122 = 0.0, 0.0, 0.0, 0.0
                 do_split = is_split_tariff and subject_to_232 == "Yes" and s232_rate > 0.0 and metal_pct < 100.0
                 
                 if do_split:
@@ -440,22 +507,26 @@ with right_col:
                     
                     duty_non_metal = non_metal_value * (parsed_rate / 100.0)
                     s301_non_metal = non_metal_value * (s301_rate / 100.0)
+                    s122_non_metal = non_metal_value * (s122_rate / 100.0)
                     
                     duty_metal = metal_value * (parsed_rate / 100.0)
                     s301_metal = metal_value * (s301_rate / 100.0)
                     s232_metal = metal_value * (s232_rate / 100.0)
+                    s122_metal = metal_value * (s122_rate / 100.0)
                     
                     duty = duty_non_metal + duty_metal
                     s301 = s301_non_metal + s301_metal
                     s232 = s232_metal
+                    s122 = s122_non_metal + s122_metal
                 else:
                     duty = value * (parsed_rate / 100.0)
                     s301 = value * (s301_rate / 100.0)
                     s232 = value * (s232_rate / 100.0)
+                    s122 = value * (s122_rate / 100.0)
                     
                 mpf = max(33.58, min(value * 0.003464, 651.50))
                 hmf = (value * 0.00125) if mode == "Ocean" else 0.0
-                total_duties = duty + s301 + s232
+                total_duties = duty + s301 + s232 + s122
                 total_duties_and_fees = total_duties + mpf + hmf
                 effective_rate = (total_duties_and_fees / value) * 100 if value > 0 else 0
 
@@ -483,6 +554,7 @@ with right_col:
                             <div class="breakdown-title">Cost Breakdown</div>
                             <div class="breakdown-row"><span>Cargo Value</span><span class="breakdown-row-value">${value:,.2f}</span></div>
                             <div class="breakdown-row"><span>Total Duties</span><span class="breakdown-row-value">${total_duties:,.2f}</span></div>
+                            <div class="breakdown-row"><span style="font-weight: 600;">Sec 122 Global (15%)</span><span class="breakdown-row-value">${s122:,.2f}</span></div>
                             <div class="breakdown-row"><span>Harbor Maintenance (HMF)</span><span class="breakdown-row-value">${hmf:,.2f}</span></div>
                             <div class="breakdown-row"><span>Merchandise Proc. (MPF)</span><span class="breakdown-row-value">${mpf:,.2f}</span></div>
                         </div>
@@ -505,7 +577,8 @@ with right_col:
                             <div class="line-item-row"><span class="line-hts">{clean_input}</span><span>{duty_rate_display}</span><span class="line-val">${duty_non_metal:,.2f}</span></div>
                         """
                         if iso_code == "CN":
-                            line_html += f'<div class="line-item-row"><span><span class="line-hts">9903.88.03</span><span class="line-item-tag" style="margin-left: 10px;">Sec 301 China</span></span><span>{s301_rate}%</span><span class="line-val">${s301_non_metal:,.2f}</span></div>'
+                            line_html += f'<div class="line-item-row"><span><span class="line-hts">9903.88.03</span><span class="line-item-tag" style="margin-left: 10px; background-color: #e0e7ff; color: #4f46e5;">Sec 301 China</span></span><span>{s301_rate}%</span><span class="line-val">${s301_non_metal:,.2f}</span></div>'
+                        line_html += f'<div class="line-item-row"><span><span class="line-hts">Sec 122</span><span class="line-item-tag" style="margin-left: 10px; {s122_tag_color}">{s122_tag_label}</span></span><span>{s122_rate}%</span><span class="line-val">${s122_non_metal:,.2f}</span></div>'
                         line_html += "</div>"
                         
                         line_html += f"""
@@ -514,8 +587,9 @@ with right_col:
                             <div class="line-item-row"><span class="line-hts">{clean_input}</span><span>{duty_rate_display}</span><span class="line-val">${duty_metal:,.2f}</span></div>
                         """
                         if iso_code == "CN":
-                            line_html += f'<div class="line-item-row"><span><span class="line-hts">9903.88.03</span><span class="line-item-tag" style="margin-left: 10px;">Sec 301 China</span></span><span>{s301_rate}%</span><span class="line-val">${s301_metal:,.2f}</span></div>'
-                        line_html += f'<div class="line-item-row"><span><span class="line-hts">{s232_heading}</span><span class="line-item-tag" style="margin-left: 10px;">Sec 232 Penalty</span></span><span>{s232_rate}%</span><span class="line-val">${s232_metal:,.2f}</span></div>'
+                            line_html += f'<div class="line-item-row"><span><span class="line-hts">9903.88.03</span><span class="line-item-tag" style="margin-left: 10px; background-color: #e0e7ff; color: #4f46e5;">Sec 301 China</span></span><span>{s301_rate}%</span><span class="line-val">${s301_metal:,.2f}</span></div>'
+                        line_html += f'<div class="line-item-row"><span><span class="line-hts">{s232_heading}</span><span class="line-item-tag" style="margin-left: 10px; background-color: #e0e7ff; color: #4f46e5;">Sec 232 Penalty</span></span><span>{s232_rate}%</span><span class="line-val">${s232_metal:,.2f}</span></div>'
+                        line_html += f'<div class="line-item-row"><span><span class="line-hts">Sec 122</span><span class="line-item-tag" style="margin-left: 10px; {s122_tag_color}">{s122_tag_label}</span></span><span>{s122_rate}%</span><span class="line-val">${s122_metal:,.2f}</span></div>'
                         line_html += "</div>"
                     else:
                         line_html += f"""
@@ -524,9 +598,12 @@ with right_col:
                             <div class="line-item-row"><span class="line-hts">{clean_input}</span><span>{duty_rate_display}</span><span class="line-val">${duty:,.2f}</span></div>
                         """
                         if iso_code == "CN":
-                            line_html += f'<div class="line-item-row"><span><span class="line-hts">9903.88.03</span><span class="line-item-tag" style="margin-left: 10px;">Sec 301 China</span></span><span>{s301_rate}%</span><span class="line-val">${s301:,.2f}</span></div>'
+                            line_html += f'<div class="line-item-row"><span><span class="line-hts">9903.88.03</span><span class="line-item-tag" style="margin-left: 10px; background-color: #e0e7ff; color: #4f46e5;">Sec 301 China</span></span><span>{s301_rate}%</span><span class="line-val">${s301:,.2f}</span></div>'
                         if s232_rate > 0.0:
-                            line_html += f'<div class="line-item-row"><span><span class="line-hts">{s232_heading}</span><span class="line-item-tag" style="margin-left: 10px;">Sec 232 Penalty</span></span><span>{s232_rate}%</span><span class="line-val">${s232:,.2f}</span></div>'
+                            line_html += f'<div class="line-item-row"><span><span class="line-hts">{s232_heading}</span><span class="line-item-tag" style="margin-left: 10px; background-color: #e0e7ff; color: #4f46e5;">Sec 232 Penalty</span></span><span>{s232_rate}%</span><span class="line-val">${s232:,.2f}</span></div>'
+                        
+                        # Add Section 122 Line Item
+                        line_html += f'<div class="line-item-row"><span><span class="line-hts">Sec 122</span><span class="line-item-tag" style="margin-left: 10px; {s122_tag_color}">{s122_tag_label}</span></span><span>{s122_rate}%</span><span class="line-val">${s122:,.2f}</span></div>'
                         line_html += "</div>"
 
                     st.markdown(line_html.replace('\n', '').strip(), unsafe_allow_html=True)
@@ -577,8 +654,12 @@ with st.sidebar:
     if not df_301.empty: st.markdown(f"✅ **Sec 301:** {len(df_301):,} rules")
     if not df_232.empty: st.markdown(f"✅ **Sec 232:** {len(df_232):,} rules")
     if not df_adcvd.empty: st.markdown(f"✅ **AD/CVD:** {len(df_adcvd):,} alerts")
+    
     if df_pga is not None: st.markdown(f"✅ **PGA Index:** {len(df_pga):,} items")
     else: st.markdown("❌ **PGA Index:** Missing CSV")
+        
+    if df_122 is not None: st.markdown(f"✅ **Sec 122 Exemptions:** {len(df_122):,} rules")
+    else: st.markdown("⚠️ **Sec 122 Exemptions:** Missing sec122_exemptions.csv")
         
     st.divider()
     if st.button("🔄 Clear System Cache", use_container_width=True):
