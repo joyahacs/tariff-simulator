@@ -1,45 +1,40 @@
 import pdfplumber
 import pandas as pd
-import os
+import re
 
-# Your specific file paths
 pdf_path = r"D:\OneDrive\Trump Tariff\2025-11-13 - ANNEX II.pdf"
 csv_path = r"D:\tariff_project\sec122_exemptions.csv"
 
 all_data = []
+print("📖 Reading PDF (Scanning Annex I text and Annex II tables)...")
 
-print("📖 Opening PDF and extracting tables (this will take a minute for 98 pages)...")
+with pdfplumber.open(pdf_path) as pdf:
+    for i, page in enumerate(pdf.pages):
+        # Pages 1 & 2 contain Annex I (which is a raw text paragraph, NOT a table!)
+        if i < 2:
+            text = page.extract_text()
+            if text:
+                codes = re.findall(r'\b\d{4}\.\d{2}\.\d{2}\b', text)
+                for c in codes:
+                    all_data.append([c, "Annex I General Exemption", "Addition"])
+        
+        # Pages 3+ contain Annex II (formatted as Tables)
+        table = page.extract_table()
+        if table:
+            for row in table:
+                # Flatten row to ignore broken PDF columns
+                row_str = " ".join([str(cell).replace('\n', ' ') for cell in row if cell])
+                hts_matches = re.findall(r'\b\d{4}(?:\.\d{2})?(?:\.\d{2})?\b', row_str)
+                
+                if hts_matches:
+                    note = ""
+                    if re.search(r'\b(Pharma|Aircraft|Addition|Ex)\b', row_str, re.IGNORECASE):
+                        note = re.search(r'\b(Pharma|Aircraft|Addition|Ex)\b', row_str, re.IGNORECASE).group(1)
+                    
+                    hts_col = " ".join(hts_matches)
+                    all_data.append([hts_col, row_str, note])
 
-try:
-    with pdfplumber.open(pdf_path) as pdf:
-        for i, page in enumerate(pdf.pages):
-            # Extract the table from the current page
-            table = page.extract_table()
-            
-            if table:
-                for row in table:
-                    # We only want rows that have exactly 3 columns (HTSUS, Description, Scope Limitations)
-                    if len(row) == 3:
-                        all_data.append(row)
-    
-    print("✅ Extraction complete! Cleaning up data...")
-    
-    # Convert to pandas DataFrame
-    df = pd.DataFrame(all_data, columns=["HTSUS", "Description", "Scope Limitations"])
-    
-    # Remove repeated header rows from the PDF
-    df = df[~df["HTSUS"].astype(str).str.contains("HTSUS", case=False, na=False)]
-    
-    # Remove empty rows
-    df = df.dropna(how='all')
-    
-    # Clean up PDF line breaks
-    df = df.map(lambda x: str(x).replace('\n', ' ').strip() if pd.notnull(x) and x is not None else "")
-    
-    # Save to CSV in your project folder
-    df.to_csv(csv_path, index=False, encoding='utf-8-sig')
-    
-    print(f"🎉 Success! Saved {len(df)} exemptions to {csv_path}")
-
-except Exception as e:
-    print(f"❌ Error: {e}")
+df = pd.DataFrame(all_data, columns=["HTSUS", "Description", "Scope Limitations"])
+df.drop_duplicates(subset=["HTSUS"], inplace=True)
+df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+print(f"🎉 Success! Extracted {len(df)} rules!")

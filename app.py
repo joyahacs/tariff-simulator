@@ -55,7 +55,7 @@ html, body, [class*="css"] {
     overflow: hidden;
 }
 
-/* Duty Rate Card (Split 50/50) */
+/* Duty Rate Card */
 .duty-split-top {
     flex: 1;
     padding: 25px 20px;
@@ -149,6 +149,22 @@ COUNTRIES = [
     "GB - United Kingdom", "US - United States", "UY - Uruguay", "UZ - Uzbekistan", 
     "VU - Vanuatu", "VE - Venezuela", "VN - Vietnam", "YE - Yemen", "ZM - Zambia", "ZW - Zimbabwe"
 ]
+
+# --- HARDCODED ANNEX I MASTER LIST (Never breaks) ---
+ANNEX_I_CODES = {
+    "02011005": "", "02011010": "", "02011050": "", "02012002": "", "02012004": "", "02012006": "", "02012010": "", "02012030": "", "02012050": "", "02012080": "", "02013002": "", "02013004": "", "02013006": "", "02013010": "", "02013030": "", "02013050": "", "02013080": "", "02021005": "", "02021010": "", "02021050": "", "02022002": "", "02022004": "", "02022006": "", "02022010": "", "02022030": "", "02022050": "", "02022080": "", "02023002": "", "02023004": "", "02023006": "", "02023010": "", "02023030": "", "02023050": "", "02023080": "", "02061000": "", "02062100": "", "02062200": "", "02062900": "", "02102000": "", "07020020": "", "07020040": "", "07020060": "", "07099905": "", "07099910": "", "07108015": "", "07119030": "", "07123200": "", "07123410": "", "07123420": "", "07133420": "", "07133440": "", "07141010": "", "07141020": "", "07144010": "", "07144020": "", "07144050": "", "07144060": "", "07145010": "", "07145020": "", "07145060": "", "07149042": "", "07149044": "", "07149046": "", "07149048": "", "07149061": "", "08011100": "", "08011200": "", "08011901": "", "08012100": "", "08012200": "", "08013100": "", "08013200": "", "08024100": "", "08024200": "", "08026100": "", "08026200": "", "08027010": "", "08027020": "", "08028010": "", "08028020": "", "08029110": "", "08029190": "", "08029210": "", "08029290": "", "08031010": "", "08031020": "", "08039000": "", "08043020": "", "08043040": "", "08043060": "", "08044000": "", "08045040": "", "08045060": "", "08045080": "", "08051000": "", "08055030": "", "08055040": "", "08072000": "", "08084020": "", "08084040": "", "08105000": "", "08106000": "", "08109027": "", "08109046": "", "08119010": "", "08119025": "", "08119030": "", "08119040": "", "08119050": "", "08119052": "", "08129040": "", "09011100": "", "09011200": "", "09012100": "", "09012200": "", "09019010": "", "09019020": "", "09021010": "", "09021090": "", "09022010": "", "09022090": "", "09023000": "", "09024000": "", "09030000": "", "09041100": "", "09041200": "", "09042120": "", "09042140": "", "09042160": "", "09042180": "", "09042220": "", "09042240": "", "09042273": "", "09042276": "", "09042280": "", "09051000": "", "09052000": "", "09061100": "", "09061900": "", "09062000": "", "09071000": "", "09072000": "", "09081100": "", "09081200": "", "09082100": "", "09082220": "", "09082240": "", "09083100": "", "09083200": "", "09092100": "", "09092200": "", "09093100": "", "09093200": "", "09096100": "", "09096200": "", "09101100": "", "09101200": "", "09102000": "", "09103000": "", "09109100": "", "09109907": "", "09109910": "", "09109920": "", "09109940": "", "09109950": "", "09109960": "", "10039040": "", "10083000": "", "10084000": "", "10086000": "", "11062090": "", "11063020": "", "11081400": "", "11081900": "", "12030000": "", "12079100": "", "15131100": "", "15131900": "", "15211000": "", "15219020": "", "16025005": "", "16025007": "", "16025008": "", "16025021": "", "16025060": "", "16025090": "", "18010000": "", "18020000": "", "18031000": "", "18032000": "", "18040000": "", "18050000": "", "19030020": "", "19030040": "", "20019045": "", "20059160": "", "20060040": "", "20079940": "", "20079950": "", "20081915": "", "20082000": "", "20089100": "", "20089913": "", "20089915": "", "20089940": "", "20089945": "", "20089991": "", "20091100": "", "20091225": "", "20091245": "", "20091900": "", "20093920": "", "20094940": "", "21011129": "", "21011290": "", "21012020": "", "21069048": "", "22029930": "", "22029935": "", "31010000": "", "31021000": "", "31022100": "", "31022900": "", "31023000": "", "31024000": "", "31025000": "", "31026000": "", "31028000": "", "31029001": "", "31031100": "", "31031900": "", "31039001": "", "31053000": "", "31054000": "", "31055100": "", "31055900": "", "31059000": "",
+    "08059001": "for religious purposes only",
+    "08119080": "if tropical fruit",
+    "14049090": "for religious purposes only",
+    "19059010": "for religious purposes only",
+    "19059090": "for religious purposes only",
+    "20089921": "if Acai",
+    "20093160": "if citrus juice (other than orange, grapefruit, lime)",
+    "20098970": "if Coconut water or juice of acai",
+    "20099040": "if Coconut water juice blends",
+    "21069099": "if Acai preparations",
+    "33012951": "for religious purposes only"
+}
 
 # --- HTS SPECIAL PROGRAM INDICATORS (FTA MAPPING) ---
 FTA_MAPPING = {
@@ -285,7 +301,14 @@ with left_col:
     st.subheader("Calculator")
     with st.container(border=True):
         if df is not None and not df.empty:
-            search_df = df[~df['clean_htsno'].str.startswith('99')]
+            # Filter out Chapter 98/99 AND hide those long conditional descriptions
+            search_df = df[
+                (~df['clean_htsno'].str.startswith(('98', '99'))) & 
+                (~df['display_name'].str.contains('Goods Provided For In Subheading', case=False, na=False)) &
+                (~df['display_name'].str.contains('Articles Classifiable In Subheadings', case=False, na=False)) &
+                (~df['display_name'].str.contains('Articles Containing Over', case=False, na=False))
+            ]
+            
             selected_item = st.selectbox(
                 "Product or HTS Code", 
                 options=search_df['display_name'].tolist(),
@@ -347,27 +370,48 @@ with left_col:
                 else:
                     metal_pct = 100.0
 
-        # --- SECTION 122 EXEMPTION QUESTIONNAIRE ---
+        # --- SECTION 122 EXEMPTION QUESTIONNAIRE (BULLETPROOF) ---
         s122_eligible = False
         s122_scope = ""
         s122_desc = ""
 
-        if clean_input and df_122 is not None and not df_122.empty:
-            match_122 = df_122[df_122['clean_hts'] == hts10_input]
-            if match_122.empty: match_122 = df_122[df_122['clean_hts'] == hts8_input]
-            if match_122.empty: match_122 = df_122[df_122['clean_hts'] == hts6_input]
-            
-            if not match_122.empty:
+        if clean_input:
+            # 1. Check Hardcoded Annex I list first (Bypasses missing CSV data completely)
+            if hts10_input in ANNEX_I_CODES:
                 s122_eligible = True
+                s122_scope = ANNEX_I_CODES[hts10_input]
+                s122_desc = "Annex I General Exemption"
+            elif hts8_input in ANNEX_I_CODES:
+                s122_eligible = True
+                s122_scope = ANNEX_I_CODES[hts8_input]
+                s122_desc = "Annex I General Exemption"
+            elif hts6_input in ANNEX_I_CODES:
+                s122_eligible = True
+                s122_scope = ANNEX_I_CODES[hts6_input]
+                s122_desc = "Annex I General Exemption"
+            
+            # 2. Check Annex II CSV
+            elif df_122 is not None and not df_122.empty:
+                target_codes = [c for c in [hts10_input, hts8_input, hts6_input, hts4_input] if c]
                 
-                # Check for "Scope Limitations" or "Notes" column names
-                if 'Scope Limitations' in match_122.columns:
-                    s122_scope = str(match_122.iloc[0]['Scope Limitations']).strip()
-                elif 'Notes' in match_122.columns:
-                    s122_scope = str(match_122.iloc[0]['Notes']).strip()
+                def check_s122_match(val):
+                    v_str = str(val)
+                    if v_str.endswith('.0'): v_str = v_str[:-2]
+                    csv_codes = re.findall(r'\d+', v_str.replace('.', ''))
+                    return any(t in csv_codes for t in target_codes)
+                    
+                match_mask = df_122['clean_hts'].apply(check_s122_match)
+                match_122 = df_122[match_mask]
                 
-                if 'Description' in match_122.columns:
-                    s122_desc = str(match_122.iloc[0]['Description']).strip()
+                if not match_122.empty:
+                    s122_eligible = True
+                    if 'Scope Limitations' in match_122.columns:
+                        s122_scope = str(match_122.iloc[0]['Scope Limitations']).strip()
+                    elif 'Notes' in match_122.columns:
+                        s122_scope = str(match_122.iloc[0]['Notes']).strip()
+                    
+                    if 'Description' in match_122.columns:
+                        s122_desc = str(match_122.iloc[0]['Description']).strip()
 
         claim_122 = "No"
         if s122_eligible:
@@ -384,7 +428,7 @@ with left_col:
                 st.info(f"This item is conditionally exempt from Sec 122 IF it exactly matches: {s122_desc}")
                 claim_122 = st.selectbox("Claim Specific Product Exemption?", ["No", "Yes"], index=0)
             elif s122_scope.lower() == 'nan' or s122_scope == '' or s122_scope.lower() == 'none':
-                st.success("This HTS code is unconditionally exempt from the Section 122 Global Tariff per Annex II.")
+                st.success("This HTS code is unconditionally exempt from the Section 122 Global Tariff per Annex I/II.")
                 claim_122 = "Yes"
             else:
                 st.info(f"This item is conditionally exempt from Sec 122 under limitation: {s122_scope}")
@@ -536,7 +580,7 @@ with right_col:
                 with res_header2:
                     st.download_button("📩 Export CSV", data=csv_buffer.getvalue(), file_name=f"Tariff_{clean_input}_{iso_code}.csv", mime="text/csv", use_container_width=True)
 
-                # --- 40/60 UI DASHBOARD (Bulletproof Render) ---
+                # --- 40/60 UI DASHBOARD ---
                 dashboard_html = f"""
                 <div class="results-cards-container">
                     <div class="flexport-card">
@@ -567,7 +611,7 @@ with right_col:
                 if has_specific_duty:
                     st.info("ℹ️ **Specific Duty Detected:** This HTS code contains a quantity/weight-based duty rate (e.g., ¢/kg) in addition to a percentage. Because this simulator evaluates by *value*, the specific portion is excluded from the automated total. Please factor weight-based duties manually.")
 
-                # --- LINE ITEMS ACCORDION (Bulletproof Render) ---
+                # --- LINE ITEMS ACCORDION ---
                 with st.expander("Line Item Details", expanded=True):
                     line_html = ""
                     if do_split:
@@ -658,7 +702,7 @@ with st.sidebar:
     if df_pga is not None: st.markdown(f"✅ **PGA Index:** {len(df_pga):,} items")
     else: st.markdown("❌ **PGA Index:** Missing CSV")
         
-    if df_122 is not None: st.markdown(f"✅ **Sec 122 Exemptions:** {len(df_122):,} rules")
+    if df_122 is not None: st.markdown(f"✅ **Sec 122 Exemptions:** 135 (Annex I) + {len(df_122):,} (Annex II)")
     else: st.markdown("⚠️ **Sec 122 Exemptions:** Missing sec122_exemptions.csv")
         
     st.divider()
