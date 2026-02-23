@@ -19,7 +19,7 @@ html, body, [class*="css"] {
 
 .block-container { padding-top: 1.2rem; padding-bottom: 1.2rem; max-width: 98%; } 
 
-/* BULLETPROOF TITLE FIX (Isolating Emoji from Gradient) */
+/* FIXED TITLE CLIPPING (P, G, Y descenders) */
 .header-container {
     display: flex;
     align-items: center;
@@ -39,7 +39,7 @@ html, body, [class*="css"] {
     -webkit-text-fill-color: transparent;
     letter-spacing: -0.5px;
     line-height: 1.4;
-    padding-bottom: 4px; /* Prevents descender clipping */
+    padding-bottom: 4px;
 }
 .sub-title {
     font-size: 0.9rem;
@@ -149,7 +149,7 @@ div.row-widget.stRadio > div { flex-direction: row; gap: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
-# Special Header (Now fully immune to Chrome clipping bugs)
+# Special Header (Immune to Chrome clipping bugs)
 st.markdown('''
 <div class="header-container">
     <span class="header-icon">🌐</span>
@@ -158,8 +158,8 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Advanced Customs Duty & Compliance Engine</div>', unsafe_allow_html=True)
 
-# SECTION 122 GLOBAL ALERT
-st.error("🚨 **EXECUTIVE ORDER:** A **15% global tariff** under **Section 122** applies to all origins unless exempted in Annex II.")
+# SECTION 122 GLOBAL ALERT (UPDATED TO 15%)
+st.error("🚨 **EXECUTIVE ORDER:** A **15% global tariff** under **Section 122** applies to all origins (Effective Feb 24, 2026) unless exempted.")
 
 COUNTRIES = [
     "AF - Afghanistan", "AL - Albania", "DZ - Algeria", "AD - Andorra", "AO - Angola", 
@@ -186,21 +186,6 @@ FTA_MAPPING = {
     "HN": ["P", "P+"], "NI": ["P", "P+"], "ZA": ["D"], "NG": ["D"]
 }
 COL2_COUNTRIES = ["CU", "KP", "RU", "BY"]
-
-ANNEX_I_CODES = {
-    "02011005": "", "02011010": "", "02011050": "", "02012002": "", "02012004": "", "02012006": "", "02012010": "", "02012030": "", "02012050": "", "02012080": "", "02013002": "", "02013004": "", "02013006": "", "02013010": "", "02013030": "", "02013050": "", "02013080": "", "02021005": "", "02021010": "", "02021050": "", "02022002": "", "02022004": "", "02022006": "", "02022010": "", "02022030": "", "02022050": "", "02022080": "", "02023002": "", "02023004": "", "02023006": "", "02023010": "", "02023030": "", "02023050": "", "02023080": "", "02061000": "", "02062100": "", "02062200": "", "02062900": "", "02102000": "", "07020020": "", "07020040": "", "07020060": "", "07099905": "", "07099910": "", "07108015": "", "07119030": "", "07123200": "", "07123410": "", "07123420": "", "07133420": "", "07133440": "", "07141010": "", "07141020": "", "07144010": "", "07144020": "", "07144050": "", "07144060": "", "07145010": "", "07145020": "", "07145060": "", "07149042": "", "07149044": "", "07149046": "", "07149048": "", "07149061": "", "08011100": "", "08011200": "", "08011901": "", "08012100": "", "08012200": "", "08013100": "", "08013200": "", "08024100": "", "08024200": "", "08026100": "", "08026200": "", "08027010": "", "08027020": "", "08028010": "", "08028020": "", "08029110": "", "08029190": "", "08029210": "", "08029290": "", "08031010": "", "08031020": "", "08039000": "", "08043020": "", "08043040": "", "08043060": "", "08044000": "", "08045040": "", "08045060": "", "08045080": "", "08051000": "", "08055030": "", "08055040": "", "08072000": "", "08084020": "", "08084040": "", "08105000": "", "08106000": "", "08109027": "", "08109046": "", "08119010": "", "08119025": "", "08119030": "", "08119040": "", "08119050": "", "08119052": "", "08129040": "", "09011100": "", "09011200": "", "09012100": "", "09012200": "", "09019010": "", "09019020": "", "09021010": "", "09021090": "", "09022010": "", "09022090": "", "09023000": "", "09024000": "", "09030000": "", "09041100": "", "09041200": "", "09042120": "", "09042140": "", "09042160": "", "09042180": "", "09042220": "", "09042240": "", "09042273": "", "09042276": "", "09042280": "", "09051000": "", "09052000": "", "09061100": "", "09061900": "", "09062000": "", "09071000": "", "09072000": "", "09081100": "", "09081200": "", "09082100": "", "09082220": "", "09082240": "", "09083100": "", "09083200": "", "09092100": "", "09092200": "", "09093100": "", "09093200": "", "09096100": "", "09096200": "", "09101100": "", "09101200": "", "09102000": "", "09103000": "", "09109100": "", "09109907": "", "09109910": "", "09109920": "", "09109940": "", "09109950": "", "09109960": "", "10039040": "", "10083000": "", "10084000": "", "10086000": "", "11062090": "", "11063020": "", "11081400": "", "11081900": "", "12030000": "", "12079100": "", "15131100": "", "15131900": "", "15211000": "", "15219020": "", "16025005": "", "16025007": "", "16025008": "", "16025021": "", "16025060": "", "16025090": "", "18010000": "", "18020000": "", "18031000": "", "18032000": "", "18040000": "", "18050000": "", "19030020": "", "19030040": "", "20019045": "", "20059160": "", "20060040": "", "20079940": "", "20079950": "", "20081915": "", "20082000": "", "20089100": "", "20089913": "", "20089915": "", "20089940": "", "20089945": "", "20089991": "", "20091100": "", "20091225": "", "20091245": "", "20091900": "", "20093920": "", "20094940": "", "21011129": "", "21011290": "", "21012020": "", "21069048": "", "22029930": "", "22029935": "", "31010000": "", "31021000": "", "31022100": "", "31022900": "", "31023000": "", "31024000": "", "31025000": "", "31026000": "", "31028000": "", "31029001": "", "31031100": "", "31031900": "", "31039001": "", "31053000": "", "31054000": "", "31055100": "", "31055900": "", "31059000": "",
-    "08059001": "for religious purposes only",
-    "08119080": "if tropical fruit",
-    "14049090": "for religious purposes only",
-    "19059010": "for religious purposes only",
-    "19059090": "for religious purposes only",
-    "20089921": "if Acai",
-    "20093160": "if citrus juice (other than orange, grapefruit, lime)",
-    "20098970": "if Coconut water or juice of acai",
-    "20099040": "if Coconut water juice blends",
-    "21069099": "if Acai preparations",
-    "33012951": "for religious purposes only"
-}
 
 EXEMPT_CODES_232 = {
     "Sec 232 (Auto Parts)": "9903.94.06",
@@ -324,6 +309,19 @@ with left_col:
         target_codes = [clean_input[:10], clean_input[:8], clean_input[:6], clean_input[:4]]
         iso_code = origin.split(" - ")[0].strip()
 
+        # PRE-EVALUATE FTA FOR SEC 122 OVERRIDES
+        fta_applied = False
+        if df is not None and not df.empty:
+            match_fta = df[df['clean_htsno'] == clean_input]
+            if not match_fta.empty:
+                spl_rate_text = str(match_fta.iloc[0].get('special', '')).replace('nan', '').strip()
+                if spl_rate_text != "None" and "(" in spl_rate_text and ")" in spl_rate_text:
+                    spi_part = spl_rate_text.split("(")[1].split(")")[0].strip()
+                    indicators_in_hts = [s.strip() for s in spi_part.split(',')]
+                    country_indicators = FTA_MAPPING.get(iso_code, [])
+                    if any(indicator in indicators_in_hts for indicator in country_indicators):
+                        fta_applied = True
+
         # --- SECTION 301 ---
         s301_rate = 0.0
         s301_code = "9903.88.03"
@@ -405,30 +403,43 @@ with left_col:
         do_split = split_res is not None
         has_s232 = any(res["is_subject"] for res in s232_results)
 
-        # --- SECTION 122 ---
+        # --- SECTION 122 DYNAMIC ENGINE (UPDATED TO 15%) ---
         claim_122 = "No"
+        s122_exempt_code = "EXEMPT"
         if clean_input:
             st.markdown("<div class='questionnaire-header'>🛡️ Section 122 Exemption Check</div>", unsafe_allow_html=True)
+            
+            # Auto-Exemptions evaluated first
             if has_s232 and not do_split:
-                st.success("✅ **Sec 122:** Automatically exempt due to Section 232 penalty.")
+                st.success("✅ **Sec 122:** Automatically exempt due to Section 232 penalty (Code 9903.03.06).")
                 claim_122 = "Yes"
+                s122_exempt_code = "9903.03.06"
+            elif fta_applied and iso_code == "CA":
+                st.success("✅ **Sec 122:** Exempt under USMCA Canada provisions (Code 9903.03.07).")
+                claim_122 = "Yes"
+                s122_exempt_code = "9903.03.07"
+            elif fta_applied and iso_code == "MX":
+                st.success("✅ **Sec 122:** Exempt under USMCA Mexico provisions (Code 9903.03.08).")
+                claim_122 = "Yes"
+                s122_exempt_code = "9903.03.08"
+            elif fta_applied and iso_code in ["CR", "DO", "SV", "GT", "HN", "NI"] and clean_input and clean_input[:2].isdigit() and int(clean_input[:2]) in range(50, 64):
+                st.success("✅ **Sec 122:** Exempt under CAFTA-DR Textile provisions (Code 9903.03.09).")
+                claim_122 = "Yes"
+                s122_exempt_code = "9903.03.09"
             else:
                 s122_eligible = False
                 s122_scope, s122_desc = "", ""
 
-                if clean_input[:10] in ANNEX_I_CODES or clean_input[:8] in ANNEX_I_CODES:
+                match_122 = check_db_match(df_122, target_codes)
+                if not match_122.empty:
                     s122_eligible = True
-                    s122_scope = "Annex I General Exemption"
-                else:
-                    match_122 = check_db_match(df_122, target_codes)
-                    if not match_122.empty:
-                        s122_eligible = True
-                        s122_scope = str(match_122.iloc[0].get('Scope Limitations', match_122.iloc[0].get('Notes', ''))).strip()
-                        s122_desc = str(match_122.iloc[0].get('Description', '')).strip()
+                    s122_scope = str(match_122.iloc[0].get('Scope Limitations', '')).strip()
+                    s122_desc = str(match_122.iloc[0].get('Description', '')).strip()
+                    s122_exempt_code = "9903.03.03" 
 
                 if s122_eligible:
-                    if s122_scope.lower() in ['nan', '', 'none', 'annex i general exemption']:
-                        st.success("✅ **Sec 122:** Unconditionally exempt per Annex I/II.")
+                    if s122_scope.lower() in ['nan', '', 'none']:
+                        st.success(f"✅ **Sec 122:** Unconditionally exempt per Annex II (Code {s122_exempt_code}).")
                         claim_122 = "Yes"
                     else:
                         claim_122 = st.radio(f"**Sec 122:** Conditionally exempt IF: {s122_scope} / {s122_desc}. Do you meet this?", ["No", "Yes"], index=0, horizontal=True)
@@ -472,21 +483,16 @@ with right_col:
                 
                 active_rate_text = gen_rate_text
                 duty_label = "Col 1 Duty"
-                fta_applied = False
                 
                 if iso_code in COL2_COUNTRIES:
                     active_rate_text = col2_rate_text
                     duty_label = f"Col 2 Duty"
+                    fta_applied = False 
                 else:
-                    if spl_rate_text != "None" and "(" in spl_rate_text and ")" in spl_rate_text:
+                    if fta_applied:
                         rate_part = spl_rate_text.split("(")[0].strip()
-                        spi_part = spl_rate_text.split("(")[1].split(")")[0].strip()
-                        indicators_in_hts = [s.strip() for s in spi_part.split(',')]
-                        country_indicators = FTA_MAPPING.get(iso_code, [])
-                        if any(indicator in indicators_in_hts for indicator in country_indicators):
-                            active_rate_text = rate_part
-                            duty_label = f"FTA Duty"
-                            fta_applied = True
+                        active_rate_text = rate_part
+                        duty_label = f"FTA Duty"
                 
                 duty_rate_display = str(active_rate_text).replace(' 1/', '').strip()
                 parsed_rate = 0.0
@@ -533,6 +539,7 @@ with right_col:
                             if "Steel" in res["label"]: res["code"] = "9903.81.97"
                             if "Aluminum" in res["label"]: res["code"] = "9903.85.14"
 
+                # NEW SEC 122 BASE RATE (15.0%)
                 base_s122_rate = 0.0 if claim_122 == "Yes" else 15.0
 
                 if do_split:
@@ -622,16 +629,22 @@ with right_col:
                             exempt_code = EXEMPT_CODES_232.get(res["label"], "EXEMPT")
                             html += f'<div class="line-item-grid"><div class="col-code">{exempt_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #dcfce7; color: #166534;">{res["label"]} (EXEMPT)</span></div><div class="col-rate">Free</div><div class="col-val">$0.00</div></div>'
                     
+                    # SECTION 122 7501 LOGIC
                     if is_metal_line or (has_s232 and not do_split):
                         line_s122_rate = 0.0
                         line_s122_tag = "Sec 122 (EXEMPT via Sec 232)"
                         line_s122_color = "background-color: #dcfce7; color: #166534;"
-                        line_s122_code = "9903.01.33"
+                        line_s122_code = "9903.03.06"
                     else:
                         line_s122_rate = 0.0 if claim_122 == "Yes" else 15.0
-                        line_s122_tag = "Sec 122 (EXEMPT)" if claim_122 == "Yes" else "Sec 122 Global Tariff"
-                        line_s122_color = "background-color: #dcfce7; color: #166534;" if claim_122 == "Yes" else "background-color: #fee2e2; color: #e11d48;"
-                        line_s122_code = "Sec 122"
+                        if claim_122 == "Yes":
+                            line_s122_tag = "Sec 122 (EXEMPT)"
+                            line_s122_color = "background-color: #dcfce7; color: #166534;"
+                            line_s122_code = s122_exempt_code
+                        else:
+                            line_s122_tag = "Sec 122 Global Tariff"
+                            line_s122_color = "background-color: #fee2e2; color: #e11d48;"
+                            line_s122_code = "9903.03.01"
 
                     s122_rate_display = "Free" if line_s122_rate == 0.0 else f"{line_s122_rate}%"
                     html += f'<div class="line-item-grid"><div class="col-code">{line_s122_code}</div><div class="col-desc"><span class="line-item-tag" style="{line_s122_color}">{line_s122_tag}</span></div><div class="col-rate">{s122_rate_display}</div><div class="col-val">${s122_val:,.2f}</div></div>'
@@ -698,10 +711,17 @@ with st.sidebar:
     st.markdown("<div style='font-size: 13.5px;'>", unsafe_allow_html=True)
     st.subheader("System Databases")
     if df is not None: st.markdown("✅ **HTS Master:** loaded")
+    
     st.markdown("---")
     st.caption("🚨 Section 301")
     if df_301 is not None: st.markdown(f"✅ Rules: {len(df_301):,}")
     if df_301_exempt is not None: st.markdown(f"✅ Exemptions: {len(df_301_exempt):,}")
+    
+    st.markdown("---")
+    st.caption("🛡️ Section 122")
+    if df_122 is not None: st.markdown(f"✅ Annex II Exemptions: {len(df_122):,}")
+    else: st.markdown("⚠️ **Exemptions:** Missing sec122_exemptions.csv")
+        
     st.markdown("---")
     st.caption("🏗️ Section 232 Subsystems")
     if df_232_steel is not None: st.markdown(f"✅ Steel: {len(df_232_steel):,}")
@@ -711,11 +731,13 @@ with st.sidebar:
     if df_232_timber is not None: st.markdown(f"✅ Timber/Lumber: {len(df_232_timber):,}")
     if df_232_mhdv is not None: st.markdown(f"✅ MHDV/Buses: {len(df_232_mhdv):,}")
     if df_232_semi is not None: st.markdown(f"✅ Semiconductors: {len(df_232_semi):,}")
+    
     st.markdown("---")
     st.caption("⚖️ Compliance Databases")
     if df_pga is not None: st.markdown(f"✅ PGA Index: {len(df_pga):,}")
     if df_adcvd is not None: st.markdown(f"✅ AD/CVD Alerts: {len(df_adcvd):,}")
     st.markdown("</div>", unsafe_allow_html=True)
+    
     st.divider()
     if st.button("🔄 Clear System Cache", use_container_width=True):
         st.cache_data.clear()
