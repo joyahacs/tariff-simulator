@@ -19,27 +19,35 @@ html, body, [class*="css"] {
 
 .block-container { padding-top: 1.2rem; padding-bottom: 1.2rem; max-width: 98%; } 
 
-/* FIXED TITLE CLIPPING (P, G, Y descenders) */
-.main-title { 
-    font-size: 2rem; 
+/* BULLETPROOF TITLE FIX (Isolating Emoji from Gradient) */
+.header-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 2px;
+    padding-top: 8px;
+}
+.header-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+}
+.header-text { 
+    font-size: 2.2rem; 
     font-weight: 800; 
     background: linear-gradient(90deg, #1e3a8a, #0ea5e9);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    margin-bottom: 0px; 
     letter-spacing: -0.5px;
-    padding-bottom: 10px; /* Stronger padding */
-    line-height: 1.5; /* Increased line height to give the descenders room */
+    line-height: 1.4;
+    padding-bottom: 4px; /* Prevents descender clipping */
 }
-            
 .sub-title {
     font-size: 0.9rem;
     color: #64748b;
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-top: -10px; /* Pull it slightly up to offset the title padding */
 }
 
 /* COMPACT FLEXPORT RESULTS LAYOUT */
@@ -141,8 +149,13 @@ div.row-widget.stRadio > div { flex-direction: row; gap: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
-# Special Header
-st.markdown('<div class="main-title">🌐 TradePro Tariff Simulator</div>', unsafe_allow_html=True)
+# Special Header (Now fully immune to Chrome clipping bugs)
+st.markdown('''
+<div class="header-container">
+    <span class="header-icon">🌐</span>
+    <span class="header-text">TradePro Tariff Simulator</span>
+</div>
+''', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Advanced Customs Duty & Compliance Engine</div>', unsafe_allow_html=True)
 
 # SECTION 122 GLOBAL ALERT
@@ -289,7 +302,7 @@ with left_col:
                 (~df['clean_htsno'].str.startswith(('98', '99'))) & 
                 (~df['display_name'].str.contains('Goods Provided For', case=False, na=False)) &
                 (~df['display_name'].str.contains('Articles Classifiable', case=False, na=False)) &
-                (df['clean_htsno'].str.len() >= 8) # Filter out all the messy 4-digit headers
+                (df['clean_htsno'].str.len() >= 8) 
             ]
             
             selected_item = st.selectbox(
