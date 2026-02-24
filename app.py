@@ -142,6 +142,14 @@ html, body, [class*="css"] {
 .alert-warning { background-color: #fffbeb; border-color: #fde68a; color: #92400e; }
 .alert-info { background-color: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
 
+/* COMPACT SIDEBAR STYLING */
+.sidebar-compact { font-size: 13px; line-height: 1.2; }
+.sidebar-title { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+.sidebar-category { font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 12px; margin-bottom: 6px; }
+.sidebar-item { margin-bottom: 5px; color: #475569; display: flex; align-items: center; gap: 6px; }
+.sidebar-divider { border-bottom: 1px dashed #cbd5e1; margin: 12px 0; }
+[data-testid="stSidebarUserContent"] { padding-top: 1.5rem !important; }
+
 /* Streamlit Overrides for Density */
 div[data-testid="stExpander"] div[role="button"] p { font-size: 13.5px; font-weight: 600; }
 .stAlert { padding: 8px 12px !important; margin-bottom: 8px !important; font-size: 13px !important; }
@@ -158,24 +166,54 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Advanced Customs Duty & Compliance Engine</div>', unsafe_allow_html=True)
 
-# SECTION 122 GLOBAL ALERT (UPDATED TO 15%)
+# SECTION 122 GLOBAL ALERT
 st.error("🚨 **EXECUTIVE ORDER:** A **15% global tariff** under **Section 122** applies to all origins (Effective Feb 24, 2026) unless exempted.")
 
+# FULL CBP ACE AESTIR APPENDIX C DATABASE
 COUNTRIES = [
-    "AF - Afghanistan", "AL - Albania", "DZ - Algeria", "AD - Andorra", "AO - Angola", 
-    "AR - Argentina", "AU - Australia", "AT - Austria", "BH - Bahrain", "BD - Bangladesh", 
-    "BE - Belgium", "BR - Brazil", "CA - Canada", "CL - Chile", "CN - China", 
-    "CO - Colombia", "CR - Costa Rica", "CU - Cuba", "DK - Denmark", "DO - Dominican Republic", 
-    "EG - Egypt", "SV - El Salvador", "FI - Finland", "FR - France", "DE - Germany", 
-    "GR - Greece", "GT - Guatemala", "HN - Honduras", "HK - Hong Kong", "IN - India", 
-    "ID - Indonesia", "IE - Ireland", "IL - Israel", "IT - Italy", "JP - Japan", 
-    "JO - Jordan", "KP - North Korea", "KR - South Korea", "MY - Malaysia", "MX - Mexico", 
-    "MA - Morocco", "NL - Netherlands", "NZ - New Zealand", "NI - Nicaragua", "NG - Nigeria", 
-    "NO - Norway", "OM - Oman", "PK - Pakistan", "PA - Panama", "PE - Peru", 
-    "PH - Philippines", "PL - Poland", "PT - Portugal", "QA - Qatar", "RU - Russia", 
-    "SA - Saudi Arabia", "SG - Singapore", "ZA - South Africa", "ES - Spain", "SE - Sweden", 
-    "CH - Switzerland", "TW - Taiwan", "TH - Thailand", "TR - Turkey", "AE - United Arab Emirates", 
-    "GB - United Kingdom", "US - United States", "VN - Vietnam"
+    "AD - Andorra", "AE - United Arab Emirates", "AF - Afghanistan", "AG - Antigua and Barbuda", 
+    "AI - Anguilla", "AL - Albania", "AM - Armenia", "AO - Angola", "AR - Argentina", "AT - Austria", 
+    "AU - Australia", "AW - Aruba", "AZ - Azerbaijan", "BA - Bosnia-Hercegovina", "BB - Barbados", 
+    "BD - Bangladesh", "BE - Belgium", "BF - Burkina", "BG - Bulgaria", "BH - Bahrain", "BI - Burundi", 
+    "BJ - Benin", "BM - Bermuda", "BN - Brunei Darussalam", "BO - Bolivia", "BR - Brazil", "BS - Bahamas", 
+    "BT - Bhutan", "BW - Botswana", "BY - Byelarus", "BZ - Belize", "CA - Canada", "CC - Cocos (Keeling) Island", 
+    "CD - Democratic Republic of Congo (Kinshasa)", "CF - Central African Republic", "CG - Congo (Brazzaville)", 
+    "CH - Switzerland", "CI - Ivory Coast", "CK - Cook Islands", "CL - Chile", "CM - Cameroon", "CN - China", 
+    "CO - Colombia", "CR - Costa Rica", "CU - Cuba", "CV - Cape Verde", "CW - Curacao", "CX - Christmas Islands", 
+    "CY - Cyprus", "CZ - Czech Republic, The", "DE - Germany", "DJ - Djibouti", "DK - Denmark", 
+    "DM - Dominica", "DO - Dominican Republic", "DZ - Algeria", "EC - Ecuador", "EE - Estonia", "EG - Egypt", 
+    "ER - Eritrea", "ES - Spain", "ET - Ethiopia", "FI - Finland", "FJ - Fiji", "FK - Falkland Islands (Malvinas)", 
+    "FM - Micronesia, Federal States of", "FO - Faroe Islands", "FR - France", "GA - Gabon", "GB - United Kingdom", 
+    "GD - Grenada", "GE - Georgia", "GF - French Guiana", "GH - Ghana", "GI - Gibraltar", "GL - Greenland", 
+    "GM - Gambia, The", "GN - Guinea", "GP - Guadeloupe", "GQ - Equatorial Guinea", "GR - Greece", "GT - Guatemala", 
+    "GW - Guinea-Bissau", "GY - Guyana", "GZ - Gaza Strip", "HK - Hong Kong", "HM - Heard Island and Mcdonald Islands", 
+    "HN - Honduras", "HR - Croatia", "HT - Haiti", "HU - Hungary", "ID - Indonesia", "IE - Ireland", "IL - Israel", 
+    "IN - India", "IO - British Indian Ocean Territory", "IQ - Iraq", "IR - Iran", "IS - Iceland", "IT - Italy", 
+    "JM - Jamaica", "JO - Jordan", "JP - Japan", "KE - Kenya", "KG - Kyrgyzstan", "KH - Cambodia", "KI - Kiribati", 
+    "KM - Comoros", "KN - St. Kitts and Nevis", "KP - North Korea", "KR - South Korea", "KV - Kosovo", "KW - Kuwait", 
+    "KY - Cayman Island", "KZ - Kazakhstan", "LA - Lao Peoples' Democratic Republic", "LB - Lebanon", "LC - Saint Lucia", 
+    "LI - Liechtenstein", "LK - Sri Lanka", "LR - Liberia", "LS - Lesotho", "LT - Lithuania", "LU - Luxembourg", 
+    "LV - Latvia", "LY - Libya", "MA - Morocco", "MC - Monaco", "MD - Moldova", "ME - Montenegro", "MG - Madagascar", 
+    "MH - Marshall Islands", "MK - Macedonia, North", "ML - Mali", "MM - Burma (Myanmar)", "MN - Mongolia", "MO - Macau", 
+    "MQ - Martinique", "MR - Mauritania", "MS - Montserrat", "MT - Malta", "MU - Mauritius", "MV - Maldives", 
+    "MW - Malawi", "MX - Mexico", "MY - Malaysia", "MZ - Mozambique", "NA - Namibia", "NC - New Caledonia", "NE - Niger", 
+    "NF - Norfolk Island", "NG - Nigeria", "NI - Nicaragua", "NL - Netherlands", "NO - Norway", "NP - Nepal", "NR - Nauru", 
+    "NU - Niue", "NZ - New Zealand", "OM - Oman", "PA - Panama", "PE - Peru", "PF - French Polynesia", 
+    "PG - Papua New Guinea", "PH - Philippines", "PK - Pakistan", "PL - Poland", "PM - St. Pierre and Miquelon", 
+    "PN - Pitcairn Island", "PR - Puerto Rico", "PT - Portugal", "PW - Palau", "PY - Paraguay", "QA - Qatar", "RE - Reunion", 
+    "RO - Romania", "RS - Serbia", "RU - Russia", "RW - Rwanda", "SA - Saudi Arabia", "SB - Solomon Islands", 
+    "SC - Seychelles", "SD - Sudan", "SE - Sweden", "SG - Singapore", "SH - St. Helena", "SI - Slovenia", 
+    "SJ - Svalvard and Jan Mayen Islands", "SK - Slovakia", "SL - Sierra Leone", "SM - San Marino", "SN - Senegal", 
+    "SO - Somalia", "SR - Suriname", "SS - South Sudan", "ST - Sao Tome and Principe", "SV - El Salvador", 
+    "SX - Sint Maarten", "SY - Syrian Arab Republic", "SZ - Eswatini", "TC - Turks and Caicos Island", "TD - Chad", 
+    "TF - French Southern and Antartic Lands", "TG - Togo", "TH - Thailand", "TJ - Tajikistan", "TK - Tokelau", 
+    "TL - Timor-Leste", "TM - Turkmenistan", "TN - Tunisia", "TO - Tonga", "TR - Turkey", "TT - Trinidad and Tobago", 
+    "TV - Tuvalu", "TW - Taiwan", "TZ - Tanzania, United Republic of", "UA - Ukraine", "UG - Uganda", 
+    "UM - United States Minor Outlying Islands", "US - United States", "UY - Uruguay", "UZ - Uzbekistan", 
+    "VA - Vatican City", "VC - Saint Vincent and the Grenadines", "VE - Venezuela", "VG - British Virgin Islands", 
+    "VI - Virgin Islands of the United States", "VN - Viet Nam", "VU - Vanuatu", "WE - West Bank", 
+    "WF - Wallis and Futuna Islands", "WS - Samoa", "YE - Yemen, Republic of", "YT - Mayotte", "ZA - South Africa", 
+    "ZM - Zambia", "ZW - Zimbabwe"
 ]
 
 FTA_MAPPING = {
@@ -303,7 +341,10 @@ with left_col:
         c1, c2 = st.columns(2)
         value = c1.number_input("Cargo Value (USD)", min_value=0.0, value=10000.0, step=100.0)
         mode = c2.selectbox("Transport", ["Ocean", "Air", "Train", "Truck"])
-        origin = st.selectbox("Country of Origin", COUNTRIES, index=14)
+        
+        # Dynamically find the index for China so it remains the default
+        china_idx = COUNTRIES.index("CN - China") if "CN - China" in COUNTRIES else 0
+        origin = st.selectbox("Country of Origin", COUNTRIES, index=china_idx)
 
         clean_input = hts_input.replace('.', '').replace(' ', '').strip()
         target_codes = [clean_input[:10], clean_input[:8], clean_input[:6], clean_input[:4]]
@@ -403,13 +444,12 @@ with left_col:
         do_split = split_res is not None
         has_s232 = any(res["is_subject"] for res in s232_results)
 
-        # --- SECTION 122 DYNAMIC ENGINE (UPDATED TO 15%) ---
+        # --- SECTION 122 DYNAMIC ENGINE ---
         claim_122 = "No"
         s122_exempt_code = "EXEMPT"
         if clean_input:
             st.markdown("<div class='questionnaire-header'>🛡️ Section 122 Exemption Check</div>", unsafe_allow_html=True)
             
-            # Auto-Exemptions evaluated first
             if has_s232 and not do_split:
                 st.success("✅ **Sec 122:** Automatically exempt due to Section 232 penalty (Code 9903.03.06).")
                 claim_122 = "Yes"
@@ -706,39 +746,55 @@ with right_col:
                         else: 
                             st.markdown(f"<div class='compact-alert alert-warning'>{alert}</div>", unsafe_allow_html=True)
 
-# --- SIDEBAR ---
+# --- COMPACT SIDEBAR LOGIC ---
 with st.sidebar:
-    st.markdown("<div style='font-size: 13.5px;'>", unsafe_allow_html=True)
-    st.subheader("System Databases")
-    if df is not None: st.markdown("✅ **HTS Master:** loaded")
-    
-    st.markdown("---")
-    st.caption("🚨 Section 301")
-    if df_301 is not None: st.markdown(f"✅ Rules: {len(df_301):,}")
-    if df_301_exempt is not None: st.markdown(f"✅ Exemptions: {len(df_301_exempt):,}")
-    
-    st.markdown("---")
-    st.caption("🛡️ Section 122")
-    if df_122 is not None: st.markdown(f"✅ Annex II Exemptions: {len(df_122):,}")
-    else: st.markdown("⚠️ **Exemptions:** Missing sec122_exemptions.csv")
+    c_hts = "loaded" if df is not None else "Missing"
+    c_301 = f"{len(df_301):,}" if df_301 is not None else "Missing"
+    c_301_ex = f"{len(df_301_exempt):,}" if df_301_exempt is not None else "Missing"
+    c_122 = f"{len(df_122):,}" if df_122 is not None else "Missing"
+    c_stl = f"{len(df_232_steel):,}" if df_232_steel is not None else "Missing"
+    c_alu = f"{len(df_232_alum):,}" if df_232_alum is not None else "Missing"
+    c_cop = f"{len(df_232_copper):,}" if df_232_copper is not None else "Missing"
+    c_aut = f"{len(df_232_auto):,}" if df_232_auto is not None else "Missing"
+    c_tim = f"{len(df_232_timber):,}" if df_232_timber is not None else "Missing"
+    c_mhd = f"{len(df_232_mhdv):,}" if df_232_mhdv is not None else "Missing"
+    c_sem = f"{len(df_232_semi):,}" if df_232_semi is not None else "Missing"
+    c_pga = f"{len(df_pga):,}" if df_pga is not None else "Missing"
+    c_adc = f"{len(df_adcvd):,}" if df_adcvd is not None else "Missing"
+
+    sidebar_html = f"""
+    <div class="sidebar-compact">
+        <div class="sidebar-title">System Databases</div>
+        <div class="sidebar-item">✅ <b>HTS Master:</b> {c_hts}</div>
         
-    st.markdown("---")
-    st.caption("🏗️ Section 232 Subsystems")
-    if df_232_steel is not None: st.markdown(f"✅ Steel: {len(df_232_steel):,}")
-    if df_232_alum is not None: st.markdown(f"✅ Aluminum: {len(df_232_alum):,}")
-    if df_232_copper is not None: st.markdown(f"✅ Copper: {len(df_232_copper):,}")
-    if df_232_auto is not None: st.markdown(f"✅ Auto Parts: {len(df_232_auto):,}")
-    if df_232_timber is not None: st.markdown(f"✅ Timber/Lumber: {len(df_232_timber):,}")
-    if df_232_mhdv is not None: st.markdown(f"✅ MHDV/Buses: {len(df_232_mhdv):,}")
-    if df_232_semi is not None: st.markdown(f"✅ Semiconductors: {len(df_232_semi):,}")
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-category">🚨 Section 301</div>
+        <div class="sidebar-item">{'✅' if c_301 != 'Missing' else '⚠️'} Rules: {c_301}</div>
+        <div class="sidebar-item">{'✅' if c_301_ex != 'Missing' else '⚠️'} Exemptions: {c_301_ex}</div>
+        
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-category">🛡️ Section 122</div>
+        <div class="sidebar-item">{'✅' if c_122 != 'Missing' else '⚠️'} Annex II Exemptions: {c_122}</div>
+        
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-category">🏗️ Section 232 Subsystems</div>
+        <div class="sidebar-item">{'✅' if c_stl != 'Missing' else '⚠️'} Steel: {c_stl}</div>
+        <div class="sidebar-item">{'✅' if c_alu != 'Missing' else '⚠️'} Aluminum: {c_alu}</div>
+        <div class="sidebar-item">{'✅' if c_cop != 'Missing' else '⚠️'} Copper: {c_cop}</div>
+        <div class="sidebar-item">{'✅' if c_aut != 'Missing' else '⚠️'} Auto Parts: {c_aut}</div>
+        <div class="sidebar-item">{'✅' if c_tim != 'Missing' else '⚠️'} Timber/Lumber: {c_tim}</div>
+        <div class="sidebar-item">{'✅' if c_mhd != 'Missing' else '⚠️'} MHDV/Buses: {c_mhd}</div>
+        <div class="sidebar-item">{'✅' if c_sem != 'Missing' else '⚠️'} Semiconductors: {c_sem}</div>
+        
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-category">⚖️ Compliance Databases</div>
+        <div class="sidebar-item">{'✅' if c_pga != 'Missing' else '⚠️'} PGA Index: {c_pga}</div>
+        <div class="sidebar-item">{'✅' if c_adc != 'Missing' else '⚠️'} AD/CVD Alerts: {c_adc}</div>
+    </div>
+    """
+    st.markdown(sidebar_html.replace('\n', '').strip(), unsafe_allow_html=True)
     
-    st.markdown("---")
-    st.caption("⚖️ Compliance Databases")
-    if df_pga is not None: st.markdown(f"✅ PGA Index: {len(df_pga):,}")
-    if df_adcvd is not None: st.markdown(f"✅ AD/CVD Alerts: {len(df_adcvd):,}")
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    st.divider()
+    st.write("")
     if st.button("🔄 Clear System Cache", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
