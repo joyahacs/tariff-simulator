@@ -157,7 +157,7 @@ div.row-widget.stRadio > div { flex-direction: row; gap: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
-# Special Header (Immune to Chrome clipping bugs)
+# Special Header
 st.markdown('''
 <div class="header-container">
     <span class="header-icon">🌐</span>
@@ -169,7 +169,6 @@ st.markdown('<div class="sub-title">Advanced Customs Duty & Compliance Engine</d
 # SECTION 122 GLOBAL ALERT
 st.error("🚨 **EXECUTIVE ORDER:** A **15% global tariff** under **Section 122** applies to all origins (Effective Feb 24, 2026) unless exempted.")
 
-# FULL CBP ACE AESTIR APPENDIX C DATABASE
 COUNTRIES = [
     "AD - Andorra", "AE - United Arab Emirates", "AF - Afghanistan", "AG - Antigua and Barbuda", 
     "AI - Anguilla", "AL - Albania", "AM - Armenia", "AO - Angola", "AR - Argentina", "AT - Austria", 
@@ -319,7 +318,7 @@ with left_col:
     st.subheader("Calculator", anchor=False)
     with st.container(border=True):
         
-        # --- SINGLE BOX SEARCH ENGINE (CLEAN LEAF CODES ONLY) ---
+        # --- SINGLE BOX SEARCH ENGINE ---
         if df is not None and not df.empty:
             search_df = df[
                 (~df['clean_htsno'].str.startswith(('98', '99'))) & 
@@ -342,7 +341,6 @@ with left_col:
         value = c1.number_input("Cargo Value (USD)", min_value=0.0, value=10000.0, step=100.0)
         mode = c2.selectbox("Transport", ["Ocean", "Air", "Train", "Truck"])
         
-        # Dynamically find the index for China so it remains the default
         china_idx = COUNTRIES.index("CN - China") if "CN - China" in COUNTRIES else 0
         origin = st.selectbox("Country of Origin", COUNTRIES, index=china_idx)
 
@@ -350,15 +348,34 @@ with left_col:
         target_codes = [clean_input[:10], clean_input[:8], clean_input[:6], clean_input[:4]]
         iso_code = origin.split(" - ")[0].strip()
 
-        # PRE-EVALUATE FTA FOR SEC 122 OVERRIDES
+        # --- UNIFIED RATE RESOLUTION & FTA ENGINE (FIXED PARENT INHERITANCE) ---
+        gen_rate_text = ""
+        spl_rate_text = ""
+        col2_rate_text = ""
         fta_applied = False
-        if df is not None and not df.empty:
-            match_fta = df[df['clean_htsno'] == clean_input]
-            if not match_fta.empty:
-                spl_rate_text = str(match_fta.iloc[0].get('special', '')).replace('nan', '').strip()
-                if spl_rate_text != "None" and "(" in spl_rate_text and ")" in spl_rate_text:
+
+        if df is not None and not df.empty and clean_input:
+            match_row = df[df['clean_htsno'] == clean_input]
+            if not match_row.empty:
+                row_data = match_row.iloc[0]
+                gen_rate_text = str(row_data.get('general', '')).replace('nan', '').strip()
+                spl_rate_text = str(row_data.get('special', '')).replace('nan', '').strip()
+                col2_rate_text = str(row_data.get('other', '')).replace('nan', '').strip()
+                
+                # CRITICAL FIX: Fall back to 8-digit parent if the 10-digit row has no rates assigned
+                if not gen_rate_text and len(clean_input) == 10:
+                    parent_match = df[df['clean_htsno'] == clean_input[:8]]
+                    if not parent_match.empty:
+                        parent_row = parent_match.iloc[0]
+                        gen_rate_text = str(parent_row.get('general', '')).replace('nan', '').strip()
+                        spl_rate_text = str(parent_row.get('special', '')).replace('nan', '').strip()
+                        col2_rate_text = str(parent_row.get('other', '')).replace('nan', '').strip()
+                
+                # Accurately evaluate FTA matching now that parent rates are resolved
+                if spl_rate_text and spl_rate_text != "None" and "(" in spl_rate_text and ")" in spl_rate_text:
                     spi_part = spl_rate_text.split("(")[1].split(")")[0].strip()
-                    indicators_in_hts = [s.strip() for s in spi_part.split(',')]
+                    # Strip out asterisks/pluses to match our mapping perfectly
+                    indicators_in_hts = [re.sub(r'[^A-Za-z0-9+*]', '', s.strip()) for s in spi_part.split(',')]
                     country_indicators = FTA_MAPPING.get(iso_code, [])
                     if any(indicator in indicators_in_hts for indicator in country_indicators):
                         fta_applied = True
@@ -500,251 +517,233 @@ with right_col:
         if df is None: st.error("Database not found.")
         elif not hts_input: st.warning("Please search for an HTS code.")
         else:
-            match = df[df['clean_htsno'] == clean_input]
-            if not match.empty:
-                row = match.iloc[0]
-                country_name_only = origin.split(" - ")[1].strip() if " - " in origin else origin
+            country_name_only = origin.split(" - ")[1].strip() if " - " in origin else origin
 
-                gen_rate_text = str(row.get('general', '')).replace('nan', '').strip()
-                spl_rate_text = str(row.get('special', '')).replace('nan', '').strip()
-                col2_rate_text = str(row.get('other', '')).replace('nan', '').strip()
-                
-                if not gen_rate_text and len(clean_input) == 10:
-                    parent_match = df[df['clean_htsno'] == clean_input[:8]]
-                    if not parent_match.empty:
-                        parent_row = parent_match.iloc[0]
-                        gen_rate_text = str(parent_row.get('general', '')).replace('nan', '').strip()
-                        spl_rate_text = str(parent_row.get('special', '')).replace('nan', '').strip()
-                        col2_rate_text = str(parent_row.get('other', '')).replace('nan', '').strip()
+            # Set up the proper active rate display logic using the variables we solved above
+            active_rate_text = gen_rate_text or "Free"
+            duty_label = "Col 1 Duty"
+            
+            if iso_code in COL2_COUNTRIES:
+                active_rate_text = col2_rate_text or "None"
+                duty_label = f"Col 2 Duty"
+                fta_applied = False 
+            else:
+                if fta_applied:
+                    rate_part = spl_rate_text.split("(")[0].strip()
+                    active_rate_text = rate_part if rate_part else "Free"
+                    duty_label = f"FTA Duty"
+            
+            duty_rate_display = str(active_rate_text).replace(' 1/', '').strip()
+            parsed_rate = 0.0
+            has_specific_duty = False
 
-                gen_rate_text = gen_rate_text or "Free"
-                spl_rate_text = spl_rate_text or "None"
-                col2_rate_text = col2_rate_text or "None"
-                
-                active_rate_text = gen_rate_text
-                duty_label = "Col 1 Duty"
-                
-                if iso_code in COL2_COUNTRIES:
-                    active_rate_text = col2_rate_text
-                    duty_label = f"Col 2 Duty"
-                    fta_applied = False 
-                else:
-                    if fta_applied:
-                        rate_part = spl_rate_text.split("(")[0].strip()
-                        active_rate_text = rate_part
-                        duty_label = f"FTA Duty"
-                
-                duty_rate_display = str(active_rate_text).replace(' 1/', '').strip()
+            if "Free" in duty_rate_display or duty_rate_display == "None" or duty_rate_display == "":
+                duty_rate_display = "Free"
                 parsed_rate = 0.0
-                has_specific_duty = False
-
-                if "Free" in duty_rate_display or duty_rate_display == "None" or duty_rate_display == "":
-                    duty_rate_display = "Free"
-                    parsed_rate = 0.0
+            else:
+                if "¢" in duty_rate_display or "/" in duty_rate_display or "cents" in duty_rate_display.lower() or "+" in duty_rate_display:
+                    has_specific_duty = True
+                    
+                pct_match = re.search(r'(\d+(\.\d+)?)%', duty_rate_display)
+                if pct_match: parsed_rate = float(pct_match.group(1))
                 else:
-                    if "¢" in duty_rate_display or "/" in duty_rate_display or "cents" in duty_rate_display.lower() or "+" in duty_rate_display:
-                        has_specific_duty = True
-                        
-                    pct_match = re.search(r'(\d+(\.\d+)?)%', duty_rate_display)
-                    if pct_match: parsed_rate = float(pct_match.group(1))
-                    else:
-                        if not has_specific_duty:
-                            numbers = re.findall(r"[-+]?\d*\.\d+|\d+", duty_rate_display)
-                            if numbers: parsed_rate = float(numbers[0])
+                    if not has_specific_duty:
+                        numbers = re.findall(r"[-+]?\d*\.\d+|\d+", duty_rate_display)
+                        if numbers: parsed_rate = float(numbers[0])
 
-                if parsed_rate == 0.0 and not has_specific_duty: duty_rate_display = "Free"
+            if parsed_rate == 0.0 and not has_specific_duty: duty_rate_display = "Free"
 
-                if iso_code == "CN" and claim_301 == "No":
-                    match_301 = check_db_match(df_301, target_codes)
-                    if not match_301.empty:
-                        if 's301_rate' in match_301.columns:
-                            try: s301_rate = float(match_301.iloc[0]['s301_rate'])
-                            except: s301_rate = 25.0
-                        else: s301_rate = 25.0
-                        if 'Heading' in match_301.columns: s301_code = str(match_301.iloc[0]['Heading'])
-                    elif clean_input[:4] in ['9401', '9403']: s301_rate = 25.0
+            if iso_code == "CN" and claim_301 == "No":
+                match_301 = check_db_match(df_301, target_codes)
+                if not match_301.empty:
+                    if 's301_rate' in match_301.columns:
+                        try: s301_rate = float(match_301.iloc[0]['s301_rate'])
+                        except: s301_rate = 25.0
+                    else: s301_rate = 25.0
+                    if 'Heading' in match_301.columns: s301_code = str(match_301.iloc[0]['Heading'])
+                elif clean_input[:4] in ['9401', '9403']: s301_rate = 25.0
 
-                for res in s232_results:
-                    if res["is_subject"]:
-                        if iso_code in ["GB", "JP", "AT", "BE", "FR", "DE", "IT", "ES", "NL", "SE"] and "Timber" in res["label"]:
-                            if iso_code == "GB":
-                                res["rate"] = min(res["rate"], 10.0)
-                                res["base_rate"] = min(res["base_rate"], 10.0)
-                            else:
-                                res["rate"] = min(res["rate"], 15.0)
-                                res["base_rate"] = min(res["base_rate"], 15.0)
-                        elif iso_code == "GB" and any(m in res["label"] for m in ["Steel", "Aluminum", "Copper"]):
-                            res["rate"] = 25.0
-                            res["base_rate"] = 25.0
-                            if "Steel" in res["label"]: res["code"] = "9903.81.97"
-                            if "Aluminum" in res["label"]: res["code"] = "9903.85.14"
+            for res in s232_results:
+                if res["is_subject"]:
+                    if iso_code in ["GB", "JP", "AT", "BE", "FR", "DE", "IT", "ES", "NL", "SE"] and "Timber" in res["label"]:
+                        if iso_code == "GB":
+                            res["rate"] = min(res["rate"], 10.0)
+                            res["base_rate"] = min(res["base_rate"], 10.0)
+                        else:
+                            res["rate"] = min(res["rate"], 15.0)
+                            res["base_rate"] = min(res["base_rate"], 15.0)
+                    elif iso_code == "GB" and any(m in res["label"] for m in ["Steel", "Aluminum", "Copper"]):
+                        res["rate"] = 25.0
+                        res["base_rate"] = 25.0
+                        if "Steel" in res["label"]: res["code"] = "9903.81.97"
+                        if "Aluminum" in res["label"]: res["code"] = "9903.85.14"
 
-                # NEW SEC 122 BASE RATE (15.0%)
-                base_s122_rate = 0.0 if claim_122 == "Yes" else 15.0
+            # SEC 122 BASE RATE
+            base_s122_rate = 0.0 if claim_122 == "Yes" else 15.0
 
-                if do_split:
-                    metal_pct = split_res["metal_pct"]
-                    metal_type = split_res["metal_type"]
-                    metal_val = value * (metal_pct / 100.0)
-                    non_metal_val = value - metal_val
-                    
-                    duty_metal = metal_val * (parsed_rate / 100.0)
-                    duty_non_metal = non_metal_val * (parsed_rate / 100.0)
-                    
-                    s301_metal = metal_val * (s301_rate / 100.0) if claim_301 == "No" else 0.0
-                    s301_non_metal = non_metal_val * (s301_rate / 100.0) if claim_301 == "No" else 0.0
-                    
-                    s122_non_metal_rate = base_s122_rate
-                    s122_non_metal = non_metal_val * (s122_non_metal_rate / 100.0)
-                    s122_metal_rate = 0.0
-                    s122_metal = 0.0
-                    
-                    s232_metal = 0.0
-                    s232_non_metal = 0.0
-                    for r in s232_results:
-                        if r["is_subject"]:
-                            if r == split_res: s232_metal += metal_val * (r["rate"] / 100.0)
-                            else:
-                                s232_metal += metal_val * (r["rate"] / 100.0)
-                                s232_non_metal += non_metal_val * (r["rate"] / 100.0)
-                                
-                    s232_total = s232_metal + s232_non_metal
-                    
-                    mpf_base = value * 0.003464
-                    mpf = max(33.58, min(mpf_base, 651.50))
-                    mpf_metal = mpf * (metal_val / value)
-                    mpf_non_metal = mpf * (non_metal_val / value)
-                    
-                    hmf = (value * 0.00125) if mode == "Ocean" else 0.0
-                    hmf_metal = hmf * (metal_val / value)
-                    hmf_non_metal = hmf * (non_metal_val / value)
-                    
-                    s122_total = s122_metal + s122_non_metal
-                    total_duties = duty_metal + duty_non_metal + s301_metal + s301_non_metal + s232_total + s122_total
-                    total_duties_and_fees = total_duties + mpf + hmf
-                    effective_rate = (total_duties_and_fees / value) * 100 if value > 0 else 0
-                else:
-                    duty = value * (parsed_rate / 100.0)
-                    s301 = value * (s301_rate / 100.0) if claim_301 == "No" else 0.0
-                    s232 = sum(value * (res["rate"] / 100.0) for res in s232_results)
-                    s122_rate = 0.0 if has_s232 else base_s122_rate
-                    s122_total = value * (s122_rate / 100.0)
-                        
-                    mpf_base = value * 0.003464
-                    mpf = max(33.58, min(mpf_base, 651.50))
-                    hmf = (value * 0.00125) if mode == "Ocean" else 0.0
-                    total_duties = duty + s301 + s232 + s122_total
-                    total_duties_and_fees = total_duties + mpf + hmf
-                    effective_rate = (total_duties_and_fees / value) * 100 if value > 0 else 0
-
-                dashboard_html = f"""
-                <div class="results-cards-container">
-                    <div class="flexport-card"><div class="duty-split-top" style="background-color: #f8faff;">
-                        <div class="duty-rate-title">Effective Duty Rate</div><div class="duty-rate-value">{effective_rate:,.2f}<span style="font-size: 1.5rem;">%</span></div>
-                    </div></div>
-                    <div class="flexport-card"><div class="duty-split-top">
-                        <div class="duty-rate-title">Total Duties & Fees</div><div class="duty-total-value">${total_duties_and_fees:,.2f}</div>
-                    </div></div>
-                </div>
-                """
-                st.markdown(dashboard_html.replace('\n', '').strip(), unsafe_allow_html=True)
+            if do_split:
+                metal_pct = split_res["metal_pct"]
+                metal_type = split_res["metal_type"]
+                metal_val = value * (metal_pct / 100.0)
+                non_metal_val = value - metal_val
                 
-                if has_specific_duty:
-                    st.markdown("<div class='compact-alert alert-info'>ℹ️ <b>Specific Duty Detected:</b> Excludes weight-based portion (e.g., ¢/kg). Evaluate manually.</div>", unsafe_allow_html=True)
-
-                def render_7501_line(line_num, line_label, line_val, duty_val, s301_val, s122_val, mpf_val, hmf_val, is_metal_line=False, split_res_ref=None):
-                    html = f'<div class="line-item-box"><div class="line-item-header"><span>Line {line_num} {line_label}</span><span>Value: ${line_val:,.2f}</span></div>'
-                    
-                    if s301_rate > 0.0 or iso_code == "CN":
-                        if claim_301 == "Yes": html += f'<div class="line-item-grid"><div class="col-code">{s301_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #dcfce7; color: #166534;">Sec 301 (EXEMPT)</span></div><div class="col-rate">Free</div><div class="col-val">$0.00</div></div>'
-                        elif s301_rate > 0.0: html += f'<div class="line-item-grid"><div class="col-code">{s301_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #e0e7ff; color: #4f46e5;">Sec 301 China</span></div><div class="col-rate">{s301_rate}%</div><div class="col-val">${s301_val:,.2f}</div></div>'
-                    
-                    for res in s232_results:
-                        if res == split_res_ref and not is_metal_line: continue
-                        is_active_penalty = res["is_subject"]
-                        if is_active_penalty:
-                            penalty_amt = line_val * (res["base_rate"] / 100.0)
-                            html += f'<div class="line-item-grid"><div class="col-code">{res["code"]}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #e0e7ff; color: #4f46e5;">{res["label"]}</span></div><div class="col-rate">{res["base_rate"]}%</div><div class="col-val">${penalty_amt:,.2f}</div></div>'
+                duty_metal = metal_val * (parsed_rate / 100.0)
+                duty_non_metal = non_metal_val * (parsed_rate / 100.0)
+                
+                s301_metal = metal_val * (s301_rate / 100.0) if claim_301 == "No" else 0.0
+                s301_non_metal = non_metal_val * (s301_rate / 100.0) if claim_301 == "No" else 0.0
+                
+                s122_non_metal_rate = base_s122_rate
+                s122_non_metal = non_metal_val * (s122_non_metal_rate / 100.0)
+                s122_metal_rate = 0.0
+                s122_metal = 0.0
+                
+                s232_metal = 0.0
+                s232_non_metal = 0.0
+                for r in s232_results:
+                    if r["is_subject"]:
+                        if r == split_res: s232_metal += metal_val * (r["rate"] / 100.0)
                         else:
-                            exempt_code = EXEMPT_CODES_232.get(res["label"], "EXEMPT")
-                            html += f'<div class="line-item-grid"><div class="col-code">{exempt_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #dcfce7; color: #166534;">{res["label"]} (EXEMPT)</span></div><div class="col-rate">Free</div><div class="col-val">$0.00</div></div>'
+                            s232_metal += metal_val * (r["rate"] / 100.0)
+                            s232_non_metal += non_metal_val * (r["rate"] / 100.0)
+                            
+                s232_total = s232_metal + s232_non_metal
+                
+                mpf_base = value * 0.003464
+                mpf = max(33.58, min(mpf_base, 651.50))
+                mpf_metal = mpf * (metal_val / value)
+                mpf_non_metal = mpf * (non_metal_val / value)
+                
+                hmf = (value * 0.00125) if mode == "Ocean" else 0.0
+                hmf_metal = hmf * (metal_val / value)
+                hmf_non_metal = hmf * (non_metal_val / value)
+                
+                s122_total = s122_metal + s122_non_metal
+                total_duties = duty_metal + duty_non_metal + s301_metal + s301_non_metal + s232_total + s122_total
+                total_duties_and_fees = total_duties + mpf + hmf
+                effective_rate = (total_duties_and_fees / value) * 100 if value > 0 else 0
+            else:
+                duty = value * (parsed_rate / 100.0)
+                s301 = value * (s301_rate / 100.0) if claim_301 == "No" else 0.0
+                s232 = sum(value * (res["rate"] / 100.0) for res in s232_results)
+                s122_rate = 0.0 if has_s232 else base_s122_rate
+                s122_total = value * (s122_rate / 100.0)
                     
-                    # SECTION 122 7501 LOGIC
-                    if is_metal_line or (has_s232 and not do_split):
-                        line_s122_rate = 0.0
-                        line_s122_tag = "Sec 122 (EXEMPT via Sec 232)"
+                mpf_base = value * 0.003464
+                mpf = max(33.58, min(mpf_base, 651.50))
+                hmf = (value * 0.00125) if mode == "Ocean" else 0.0
+                total_duties = duty + s301 + s232 + s122_total
+                total_duties_and_fees = total_duties + mpf + hmf
+                effective_rate = (total_duties_and_fees / value) * 100 if value > 0 else 0
+
+            dashboard_html = f"""
+            <div class="results-cards-container">
+                <div class="flexport-card"><div class="duty-split-top" style="background-color: #f8faff;">
+                    <div class="duty-rate-title">Effective Duty Rate</div><div class="duty-rate-value">{effective_rate:,.2f}<span style="font-size: 1.5rem;">%</span></div>
+                </div></div>
+                <div class="flexport-card"><div class="duty-split-top">
+                    <div class="duty-rate-title">Total Duties & Fees</div><div class="duty-total-value">${total_duties_and_fees:,.2f}</div>
+                </div></div>
+            </div>
+            """
+            st.markdown(dashboard_html.replace('\n', '').strip(), unsafe_allow_html=True)
+            
+            if has_specific_duty:
+                st.markdown("<div class='compact-alert alert-info'>ℹ️ <b>Specific Duty Detected:</b> Excludes weight-based portion (e.g., ¢/kg). Evaluate manually.</div>", unsafe_allow_html=True)
+
+            def render_7501_line(line_num, line_label, line_val, duty_val, s301_val, s122_val, mpf_val, hmf_val, is_metal_line=False, split_res_ref=None):
+                html = f'<div class="line-item-box"><div class="line-item-header"><span>Line {line_num} {line_label}</span><span>Value: ${line_val:,.2f}</span></div>'
+                
+                if s301_rate > 0.0 or iso_code == "CN":
+                    if claim_301 == "Yes": html += f'<div class="line-item-grid"><div class="col-code">{s301_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #dcfce7; color: #166534;">Sec 301 (EXEMPT)</span></div><div class="col-rate">Free</div><div class="col-val">$0.00</div></div>'
+                    elif s301_rate > 0.0: html += f'<div class="line-item-grid"><div class="col-code">{s301_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #e0e7ff; color: #4f46e5;">Sec 301 China</span></div><div class="col-rate">{s301_rate}%</div><div class="col-val">${s301_val:,.2f}</div></div>'
+                
+                for res in s232_results:
+                    if res == split_res_ref and not is_metal_line: continue
+                    is_active_penalty = res["is_subject"]
+                    if is_active_penalty:
+                        penalty_amt = line_val * (res["base_rate"] / 100.0)
+                        html += f'<div class="line-item-grid"><div class="col-code">{res["code"]}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #e0e7ff; color: #4f46e5;">{res["label"]}</span></div><div class="col-rate">{res["base_rate"]}%</div><div class="col-val">${penalty_amt:,.2f}</div></div>'
+                    else:
+                        exempt_code = EXEMPT_CODES_232.get(res["label"], "EXEMPT")
+                        html += f'<div class="line-item-grid"><div class="col-code">{exempt_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #dcfce7; color: #166534;">{res["label"]} (EXEMPT)</span></div><div class="col-rate">Free</div><div class="col-val">$0.00</div></div>'
+                
+                # SECTION 122 7501 LOGIC
+                if is_metal_line or (has_s232 and not do_split):
+                    line_s122_rate = 0.0
+                    line_s122_tag = "Sec 122 (EXEMPT via Sec 232)"
+                    line_s122_color = "background-color: #dcfce7; color: #166534;"
+                    line_s122_code = "9903.03.06"
+                else:
+                    line_s122_rate = 0.0 if claim_122 == "Yes" else 15.0
+                    if claim_122 == "Yes":
+                        line_s122_tag = "Sec 122 (EXEMPT)"
                         line_s122_color = "background-color: #dcfce7; color: #166534;"
-                        line_s122_code = "9903.03.06"
+                        line_s122_code = s122_exempt_code
                     else:
-                        line_s122_rate = 0.0 if claim_122 == "Yes" else 15.0
-                        if claim_122 == "Yes":
-                            line_s122_tag = "Sec 122 (EXEMPT)"
-                            line_s122_color = "background-color: #dcfce7; color: #166534;"
-                            line_s122_code = s122_exempt_code
-                        else:
-                            line_s122_tag = "Sec 122 Global Tariff"
-                            line_s122_color = "background-color: #fee2e2; color: #e11d48;"
-                            line_s122_code = "9903.03.01"
+                        line_s122_tag = "Sec 122 Global Tariff"
+                        line_s122_color = "background-color: #fee2e2; color: #e11d48;"
+                        line_s122_code = "9903.03.01"
 
-                    s122_rate_display = "Free" if line_s122_rate == 0.0 else f"{line_s122_rate}%"
-                    html += f'<div class="line-item-grid"><div class="col-code">{line_s122_code}</div><div class="col-desc"><span class="line-item-tag" style="{line_s122_color}">{line_s122_tag}</span></div><div class="col-rate">{s122_rate_display}</div><div class="col-val">${s122_val:,.2f}</div></div>'
-                    
-                    html += f'<div class="line-item-grid" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;"><div class="col-code">{clean_input}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #f1f5f9; color: #475569;">Base Duty</span></div><div class="col-rate">{duty_rate_display}</div><div class="col-val">${duty_val:,.2f}</div></div>'
-                    
-                    mpf_rate_str = "0.3464%"
-                    if mpf_base < 33.58: mpf_rate_str = "MIN"
-                    elif mpf_base > 651.50: mpf_rate_str = "MAX"
-                    html += f'<div class="line-item-grid"><div class="col-code">499</div><div class="col-desc"><span class="line-item-tag" style="background-color: #f8fafc; border: 1px solid #e2e8f0; color: #64748b;">Merchandise Processing</span></div><div class="col-rate">{mpf_rate_str}</div><div class="col-val">${mpf_val:,.2f}</div></div>'
-                    
-                    if hmf > 0: html += f'<div class="line-item-grid"><div class="col-code">501</div><div class="col-desc"><span class="line-item-tag" style="background-color: #f8fafc; border: 1px solid #e2e8f0; color: #64748b;">Harbor Maintenance</span></div><div class="col-rate">0.1250%</div><div class="col-val">${hmf_val:,.2f}</div></div>'
-                    
-                    html += "</div>"
-                    return html
+                s122_rate_display = "Free" if line_s122_rate == 0.0 else f"{line_s122_rate}%"
+                html += f'<div class="line-item-grid"><div class="col-code">{line_s122_code}</div><div class="col-desc"><span class="line-item-tag" style="{line_s122_color}">{line_s122_tag}</span></div><div class="col-rate">{s122_rate_display}</div><div class="col-val">${s122_val:,.2f}</div></div>'
+                
+                html += f'<div class="line-item-grid" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;"><div class="col-code">{clean_input}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #f1f5f9; color: #475569;">Base Duty</span></div><div class="col-rate">{duty_rate_display}</div><div class="col-val">${duty_val:,.2f}</div></div>'
+                
+                mpf_rate_str = "0.3464%"
+                if mpf_base < 33.58: mpf_rate_str = "MIN"
+                elif mpf_base > 651.50: mpf_rate_str = "MAX"
+                html += f'<div class="line-item-grid"><div class="col-code">499</div><div class="col-desc"><span class="line-item-tag" style="background-color: #f8fafc; border: 1px solid #e2e8f0; color: #64748b;">Merchandise Processing</span></div><div class="col-rate">{mpf_rate_str}</div><div class="col-val">${mpf_val:,.2f}</div></div>'
+                
+                if hmf > 0: html += f'<div class="line-item-grid"><div class="col-code">501</div><div class="col-desc"><span class="line-item-tag" style="background-color: #f8fafc; border: 1px solid #e2e8f0; color: #64748b;">Harbor Maintenance</span></div><div class="col-rate">0.1250%</div><div class="col-val">${hmf_val:,.2f}</div></div>'
+                
+                html += "</div>"
+                return html
 
-                with st.expander("Line Item Details", expanded=True):
-                    final_html = ""
-                    if do_split:
-                        final_html += render_7501_line(1, f"(Non-{metal_type})", non_metal_val, duty_non_metal, s301_non_metal, s122_non_metal, mpf_non_metal, hmf_non_metal, False, split_res)
-                        final_html += render_7501_line(2, f"({metal_type})", metal_val, duty_metal, s301_metal, s122_metal, mpf_metal, hmf_metal, True, split_res)
-                    else:
-                        final_html += render_7501_line(1, "", value, duty, s301, s122_total, mpf, hmf, False, None)
-                        
-                    st.markdown(final_html.replace('\n', '').strip(), unsafe_allow_html=True)
+            with st.expander("Line Item Details", expanded=True):
+                final_html = ""
+                if do_split:
+                    final_html += render_7501_line(1, f"(Non-{metal_type})", non_metal_val, duty_non_metal, s301_non_metal, s122_non_metal, mpf_non_metal, hmf_non_metal, False, split_res)
+                    final_html += render_7501_line(2, f"({metal_type})", metal_val, duty_metal, s301_metal, s122_metal, mpf_metal, hmf_metal, True, split_res)
+                else:
+                    final_html += render_7501_line(1, "", value, duty, s301, s122_total, mpf, hmf, False, None)
                     
-                if fta_applied: 
-                    st.markdown(f"<div class='fta-alert'><span>✅</span> <span><span style='text-transform: uppercase;'>FTA APPLIED:</span> {country_name_only} qualifies for special duties.</span></div>", unsafe_allow_html=True)
+                st.markdown(final_html.replace('\n', '').strip(), unsafe_allow_html=True)
+                
+            if fta_applied: 
+                st.markdown(f"<div class='fta-alert'><span>✅</span> <span><span style='text-transform: uppercase;'>FTA APPLIED:</span> {country_name_only} qualifies for special duties.</span></div>", unsafe_allow_html=True)
 
-                compliance_alerts = []
-                if df_adcvd is not None and not df_adcvd.empty:
-                    risk_check = df_adcvd[(df_adcvd['hts_prefix'] == clean_input[:6]) & (df_adcvd['country'] == iso_code)]
-                    if not risk_check.empty:
-                        case_name = risk_check.iloc[0].get('case_desc', 'subject merchandise')
-                        compliance_alerts.append(f"🚨 <b>AD/CVD RISK:</b> Imports of <b>{case_name}</b> from <b>{country_name_only}</b> are subject to punitive duties.")
+            compliance_alerts = []
+            if df_adcvd is not None and not df_adcvd.empty:
+                risk_check = df_adcvd[(df_adcvd['hts_prefix'] == clean_input[:6]) & (df_adcvd['country'] == iso_code)]
+                if not risk_check.empty:
+                    case_name = risk_check.iloc[0].get('case_desc', 'subject merchandise')
+                    compliance_alerts.append(f"🚨 <b>AD/CVD RISK:</b> Imports of <b>{case_name}</b> from <b>{country_name_only}</b> are subject to punitive duties.")
 
-                if df_pga is not None and not df_pga.empty:
-                    pga_match = df_pga[df_pga['clean_hts10'] == clean_input[:10]]
-                    if not pga_match.empty:
-                        pga_row = pga_match.iloc[0]
-                        for col_name_in_df in pga_row.index:
-                            if 'tariff' in str(col_name_in_df).lower() or 'clean' in str(col_name_in_df).lower() or 'desc' in str(col_name_in_df).lower(): continue
-                            val = str(pga_row[col_name_in_df]).strip().upper()
-                            for code in re.split(r'[,\s]+', val):
-                                code = code.strip()
-                                if code in PGA_DICTIONARY:
-                                    agency, desc, status = PGA_DICTIONARY[code]
-                                    alert = f"📋 <b>{agency}</b> ({code}): {desc} - <b>{status.upper()}</b>"
-                                    if alert not in compliance_alerts: compliance_alerts.append(alert)
-                                elif re.match(r'^[A-Z]{2}[A-Z0-9]$', code) and code not in ['NAN', 'NON']:
-                                    alert = f"📋 <b>{code}</b>: PGA Requirement Detected"
-                                    if alert not in compliance_alerts: compliance_alerts.append(alert)
+            if df_pga is not None and not df_pga.empty:
+                pga_match = df_pga[df_pga['clean_hts10'] == clean_input[:10]]
+                if not pga_match.empty:
+                    pga_row = pga_match.iloc[0]
+                    for col_name_in_df in pga_row.index:
+                        if 'tariff' in str(col_name_in_df).lower() or 'clean' in str(col_name_in_df).lower() or 'desc' in str(col_name_in_df).lower(): continue
+                        val = str(pga_row[col_name_in_df]).strip().upper()
+                        for code in re.split(r'[,\s]+', val):
+                            code = code.strip()
+                            if code in PGA_DICTIONARY:
+                                agency, desc, status = PGA_DICTIONARY[code]
+                                alert = f"📋 <b>{agency}</b> ({code}): {desc} - <b>{status.upper()}</b>"
+                                if alert not in compliance_alerts: compliance_alerts.append(alert)
+                            elif re.match(r'^[A-Z]{2}[A-Z0-9]$', code) and code not in ['NAN', 'NON']:
+                                alert = f"📋 <b>{code}</b>: PGA Requirement Detected"
+                                if alert not in compliance_alerts: compliance_alerts.append(alert)
 
-                if compliance_alerts:
-                    st.markdown("<div style='font-weight: 600; color: #1e293b; margin-top: 15px; margin-bottom: 8px; font-size: 13.5px;'>⚖️ Compliance & Regulatory Checks</div>", unsafe_allow_html=True)
-                    for alert in compliance_alerts:
-                        if "🚨" in alert: 
-                            st.markdown(f"<div class='compact-alert alert-danger'>{alert}</div>", unsafe_allow_html=True)
-                        else: 
-                            st.markdown(f"<div class='compact-alert alert-warning'>{alert}</div>", unsafe_allow_html=True)
+            if compliance_alerts:
+                st.markdown("<div style='font-weight: 600; color: #1e293b; margin-top: 15px; margin-bottom: 8px; font-size: 13.5px;'>⚖️ Compliance & Regulatory Checks</div>", unsafe_allow_html=True)
+                for alert in compliance_alerts:
+                    if "🚨" in alert: 
+                        st.markdown(f"<div class='compact-alert alert-danger'>{alert}</div>", unsafe_allow_html=True)
+                    else: 
+                        st.markdown(f"<div class='compact-alert alert-warning'>{alert}</div>", unsafe_allow_html=True)
 
 # --- COMPACT SIDEBAR LOGIC ---
 with st.sidebar:
