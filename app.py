@@ -157,7 +157,7 @@ div.row-widget.stRadio > div { flex-direction: row; gap: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
-# Special Header
+# Special Header (Immune to Chrome clipping bugs)
 st.markdown('''
 <div class="header-container">
     <span class="header-icon">🌐</span>
@@ -167,8 +167,9 @@ st.markdown('''
 st.markdown('<div class="sub-title">Advanced Customs Duty & Compliance Engine</div>', unsafe_allow_html=True)
 
 # SECTION 122 GLOBAL ALERT
-st.error("🚨 **EXECUTIVE ORDER:** A **15% global tariff** under **Section 122** applies to all origins (Effective Feb 24, 2026) unless exempted.")
+st.error("🚨 **EXECUTIVE ORDER:** A **10% global tariff** under **Section 122** applies to all origins (Effective Feb 24, 2026) unless exempted.")
 
+# FULL CBP ACE AESTIR APPENDIX C DATABASE
 COUNTRIES = [
     "AD - Andorra", "AE - United Arab Emirates", "AF - Afghanistan", "AG - Antigua and Barbuda", 
     "AI - Anguilla", "AL - Albania", "AM - Armenia", "AO - Angola", "AR - Argentina", "AT - Austria", 
@@ -306,9 +307,28 @@ df_122 = load_csv('sec122_exemptions.csv')
 df_adcvd = load_csv('adcvd_warnings.csv')
 df_pga = load_pga_data()
 
-def check_db_match(df_db, target_codes):
-    if df_db is None or df_db.empty: return pd.DataFrame()
-    match_mask = df_db['clean_hts'].apply(lambda x: any(t in re.findall(r'\d+', str(x).replace('.', '')) for t in target_codes if t))
+# --- SMART MATCHING ENGINE (FIXES USTR TRAILING ZEROS BUG) ---
+def check_db_match(df_db, clean_input):
+    if df_db is None or df_db.empty or not clean_input: return pd.DataFrame()
+    target_codes = [clean_input[:10], clean_input[:8], clean_input[:6], clean_input[:4]]
+    
+    def check_match(val):
+        val_str = str(val).replace('.', '').strip()
+        db_codes = re.findall(r'\d+', val_str)
+        for db_c in db_codes:
+            if not db_c: continue
+            if db_c in target_codes: return True
+            if clean_input.startswith(db_c): return True
+            
+            # Trailing Zero Fix (e.g. DB lists 6307909800, User inputs 6307909891)
+            if len(db_c) >= 8 and db_c.endswith('00'):
+                base = db_c.rstrip('0')
+                if len(base) % 2 != 0: base += '0' # keeps codes in pairs
+                if clean_input.startswith(base): return True
+                
+        return False
+
+    match_mask = df_db['clean_hts'].apply(check_match)
     return df_db[match_mask]
 
 # --- LAYOUT ---
@@ -318,7 +338,7 @@ with left_col:
     st.subheader("Calculator", anchor=False)
     with st.container(border=True):
         
-        # --- SINGLE BOX SEARCH ENGINE ---
+        # --- SINGLE BOX SEARCH ENGINE (CLEAN LEAF CODES ONLY) ---
         if df is not None and not df.empty:
             search_df = df[
                 (~df['clean_htsno'].str.startswith(('98', '99'))) & 
@@ -331,11 +351,11 @@ with left_col:
                 "Product or HTS Code", 
                 options=search_df['display_name'].tolist(), 
                 index=None, 
-                placeholder="Enter HTS Code (e.g. 3924.10.30.00)"
+                placeholder="Enter HTS Code (e.g. 6307.90.98.91)"
             )
             hts_input = selected_item.split(" - ")[0].strip() if selected_item else ""
         else:
-            hts_input = st.text_input("Product or HTS Code", placeholder="Enter HTS Code (e.g. 3924.10.30.00)")
+            hts_input = st.text_input("Product or HTS Code", placeholder="Enter HTS Code")
             
         c1, c2 = st.columns(2)
         value = c1.number_input("Cargo Value (USD)", min_value=0.0, value=10000.0, step=100.0)
@@ -348,11 +368,11 @@ with left_col:
         target_codes = [clean_input[:10], clean_input[:8], clean_input[:6], clean_input[:4]]
         iso_code = origin.split(" - ")[0].strip()
 
-        # --- UNIFIED RATE RESOLUTION & FTA ENGINE (FIXED PARENT INHERITANCE) ---
+        # PRE-EVALUATE FTA FOR SEC 122 OVERRIDES
+        fta_applied = False
         gen_rate_text = ""
         spl_rate_text = ""
         col2_rate_text = ""
-        fta_applied = False
 
         if df is not None and not df.empty and clean_input:
             match_row = df[df['clean_htsno'] == clean_input]
@@ -362,7 +382,6 @@ with left_col:
                 spl_rate_text = str(row_data.get('special', '')).replace('nan', '').strip()
                 col2_rate_text = str(row_data.get('other', '')).replace('nan', '').strip()
                 
-                # CRITICAL FIX: Fall back to 8-digit parent if the 10-digit row has no rates assigned
                 if not gen_rate_text and len(clean_input) == 10:
                     parent_match = df[df['clean_htsno'] == clean_input[:8]]
                     if not parent_match.empty:
@@ -371,22 +390,20 @@ with left_col:
                         spl_rate_text = str(parent_row.get('special', '')).replace('nan', '').strip()
                         col2_rate_text = str(parent_row.get('other', '')).replace('nan', '').strip()
                 
-                # Accurately evaluate FTA matching now that parent rates are resolved
                 if spl_rate_text and spl_rate_text != "None" and "(" in spl_rate_text and ")" in spl_rate_text:
                     spi_part = spl_rate_text.split("(")[1].split(")")[0].strip()
-                    # Strip out asterisks/pluses to match our mapping perfectly
                     indicators_in_hts = [re.sub(r'[^A-Za-z0-9+*]', '', s.strip()) for s in spi_part.split(',')]
                     country_indicators = FTA_MAPPING.get(iso_code, [])
                     if any(indicator in indicators_in_hts for indicator in country_indicators):
                         fta_applied = True
 
-        # --- SECTION 301 ---
+        # --- SECTION 301 (WITH HARDCODED FALLBACK) ---
         s301_rate = 0.0
         s301_code = "9903.88.03"
         claim_301 = "No"
         
         if iso_code == "CN" and clean_input:
-            match_301_ex = check_db_match(df_301_exempt, target_codes)
+            match_301_ex = check_db_match(df_301_exempt, clean_input)
             if not match_301_ex.empty:
                 s301_desc = str(match_301_ex.iloc[0].get('Description', 'See USTR exclusions list')).strip()
                 st.markdown("<div class='questionnaire-header'>🚨 Section 301 Exemption Check</div>", unsafe_allow_html=True)
@@ -397,7 +414,7 @@ with left_col:
         s232_results = []
         if clean_input:
             def get_232_rate_precheck(db, default_rate, category_name, ch99_code):
-                m = check_db_match(db, target_codes)
+                m = check_db_match(db, clean_input)
                 if not m.empty:
                     r = default_rate
                     if category_name in ["Steel", "Aluminum", "Copper"]: r = 50.0
@@ -413,14 +430,14 @@ with left_col:
             r_auto, l_auto, c_auto = get_232_rate_precheck(df_232_auto, 25.0, "Auto Parts", "9903.94.05")
             r_semi, l_semi, c_semi = get_232_rate_precheck(df_232_semi, 25.0, "Semiconductors", "9903.79.01")
             
-            m_timber = check_db_match(df_232_timber, target_codes)
+            m_timber = check_db_match(df_232_timber, clean_input)
             r_timber, l_timber, c_timber = 0.0, "", ""
             if not m_timber.empty:
                 r_timber = float(m_timber.iloc[0].get('Rate', 10.0))
                 c_timber = "9903.76.02" if clean_input.startswith("9401") else ("9903.76.03" if clean_input.startswith("9403") else "9903.76.01")
                 l_timber = "Sec 232 (Timber/Lumber)"
 
-            m_mhdv = check_db_match(df_232_mhdv, target_codes)
+            m_mhdv = check_db_match(df_232_mhdv, clean_input)
             r_mhdv, l_mhdv, c_mhdv = 0.0, "", ""
             if not m_mhdv.empty:
                 r_mhdv = float(m_mhdv.iloc[0].get('Rate', 25.0))
@@ -461,7 +478,7 @@ with left_col:
         do_split = split_res is not None
         has_s232 = any(res["is_subject"] for res in s232_results)
 
-        # --- SECTION 122 DYNAMIC ENGINE ---
+        # --- SECTION 122 DYNAMIC ENGINE (10%) ---
         claim_122 = "No"
         s122_exempt_code = "EXEMPT"
         if clean_input:
@@ -487,7 +504,7 @@ with left_col:
                 s122_eligible = False
                 s122_scope, s122_desc = "", ""
 
-                match_122 = check_db_match(df_122, target_codes)
+                match_122 = check_db_match(df_122, clean_input)
                 if not match_122.empty:
                     s122_eligible = True
                     s122_scope = str(match_122.iloc[0].get('Scope Limitations', '')).strip()
@@ -502,9 +519,9 @@ with left_col:
                         claim_122 = st.radio(f"**Sec 122:** Conditionally exempt IF: {s122_scope} / {s122_desc}. Do you meet this?", ["No", "Yes"], index=0, horizontal=True)
                 else:
                     if do_split:
-                        st.warning("⚠️ **Sec 122:** Non-metal portion subject to 15% Global Tariff.")
+                        st.warning("⚠️ **Sec 122:** Non-metal portion subject to 10% Global Tariff.")
                     else:
-                        st.info("No exemption found. Subject to 15% Global Tariff.")
+                        st.info("No exemption found. Subject to 10% Global Tariff.")
 
     st.write("") 
     run_btn = st.button("🚀 Calculate Duties", type="primary", use_container_width=True)
@@ -519,7 +536,6 @@ with right_col:
         else:
             country_name_only = origin.split(" - ")[1].strip() if " - " in origin else origin
 
-            # Set up the proper active rate display logic using the variables we solved above
             active_rate_text = gen_rate_text or "Free"
             duty_label = "Col 1 Duty"
             
@@ -554,14 +570,24 @@ with right_col:
             if parsed_rate == 0.0 and not has_specific_duty: duty_rate_display = "Free"
 
             if iso_code == "CN" and claim_301 == "No":
-                match_301 = check_db_match(df_301, target_codes)
+                match_301 = check_db_match(df_301, clean_input)
                 if not match_301.empty:
                     if 's301_rate' in match_301.columns:
                         try: s301_rate = float(match_301.iloc[0]['s301_rate'])
                         except: s301_rate = 25.0
                     else: s301_rate = 25.0
                     if 'Heading' in match_301.columns: s301_code = str(match_301.iloc[0]['Heading'])
-                elif clean_input[:4] in ['9401', '9403']: s301_rate = 25.0
+                else:
+                    # FAILSAFE: If the USTR database rebuild misses common categories, apply them manually
+                    if clean_input.startswith(("6307", "61", "62", "64")): 
+                        s301_rate = 7.5
+                        s301_code = "9903.88.15"
+                    elif clean_input.startswith(('9401', '9403')):
+                        s301_rate = 25.0
+                        s301_code = "9903.88.03"
+                    elif clean_input.startswith("8708"):
+                        s301_rate = 25.0
+                        s301_code = "9903.88.01"
 
             for res in s232_results:
                 if res["is_subject"]:
@@ -578,8 +604,8 @@ with right_col:
                         if "Steel" in res["label"]: res["code"] = "9903.81.97"
                         if "Aluminum" in res["label"]: res["code"] = "9903.85.14"
 
-            # SEC 122 BASE RATE
-            base_s122_rate = 0.0 if claim_122 == "Yes" else 15.0
+            # SEC 122 BASE RATE (10.0%)
+            base_s122_rate = 0.0 if claim_122 == "Yes" else 10.0
 
             if do_split:
                 metal_pct = split_res["metal_pct"]
@@ -675,7 +701,7 @@ with right_col:
                     line_s122_color = "background-color: #dcfce7; color: #166534;"
                     line_s122_code = "9903.03.06"
                 else:
-                    line_s122_rate = 0.0 if claim_122 == "Yes" else 15.0
+                    line_s122_rate = 0.0 if claim_122 == "Yes" else 10.0
                     if claim_122 == "Yes":
                         line_s122_tag = "Sec 122 (EXEMPT)"
                         line_s122_color = "background-color: #dcfce7; color: #166534;"
