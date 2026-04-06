@@ -313,24 +313,37 @@ df_pga = load_pga_data()
 # --- SMART MATCHING ENGINE (FIXES USTR TRAILING ZEROS BUG) ---
 def check_db_match(df_db, clean_input):
     if df_db is None or df_db.empty or not clean_input: return pd.DataFrame()
+    
+    # Inputs: e.g. 7116200500
+    # Search targets: [Full, 8-digit, 6-digit, 4-digit]
     target_codes = [clean_input[:10], clean_input[:8], clean_input[:6], clean_input[:4]]
     
     def check_match(val):
-        val_str = str(val).replace('.', '').strip()
-        db_codes = re.findall(r'\d+', val_str)
-        for db_c in db_codes:
-            if not db_c: continue
-            if db_c in target_codes: return True
-            if clean_input.startswith(db_c): return True
-            
-            # Trailing Zero Fix (e.g. DB lists 6307909800, User inputs 6307909891)
-            if len(db_c) >= 8 and db_c.endswith('00'):
-                base = db_c.rstrip('0')
-                if len(base) % 2 != 0: base += '0' # keeps codes in pairs
-                if clean_input.startswith(base): return True
+        # STRICTOR CLEANING: Ensure we only extract digits and dots
+        val_str = str(val).strip()
+        
+        # Skip if looks like a date or has weird characters
+        if '-' in val_str or ':' in val_str: return False
+        
+        # Extract the numeric part
+        numeric_match = re.search(r'\d{4,10}', val_str.replace('.', ''))
+        if not numeric_match: return False
+        
+        db_c = numeric_match.group(0)
+        
+        # Exact match of prefix
+        if db_c in target_codes: return True
+        if clean_input.startswith(db_c): return True
+        
+        # Trailing Zero Fix (e.g. DB lists 6307909800, User inputs 6307909891)
+        if len(db_c) >= 8 and db_c.endswith('00'):
+            base = db_c.rstrip('0')
+            if len(base) % 2 != 0: base += '0'
+            if clean_input.startswith(base): return True
                 
         return False
 
+    # Apply match mask
     match_mask = df_db['clean_hts'].apply(check_match)
     return df_db[match_mask]
 
@@ -399,6 +412,40 @@ with left_col:
                     country_indicators = FTA_MAPPING.get(iso_code, [])
                     if any(indicator in indicators_in_hts for indicator in country_indicators):
                         fta_applied = True
+
+        # --- PRE-PARSE DUTY RATE FOR SEC 232 / SEC 122 LOGIC ---
+        active_rate_text = gen_rate_text or "Free"
+        duty_label = "Col 1 Duty"
+        
+        if iso_code in COL2_COUNTRIES:
+            active_rate_text = col2_rate_text or "None"
+            duty_label = f"Col 2 Duty"
+            fta_applied = False 
+        else:
+            if fta_applied:
+                rate_part = spl_rate_text.split("(")[0].strip()
+                active_rate_text = rate_part if rate_part else "Free"
+                duty_label = f"FTA Duty"
+        
+        duty_rate_display = str(active_rate_text).replace(' 1/', '').strip()
+        parsed_rate = 0.0
+        has_specific_duty = False
+
+        if "Free" in duty_rate_display or duty_rate_display == "None" or duty_rate_display == "":
+            duty_rate_display = "Free"
+            parsed_rate = 0.0
+        else:
+            if "¢" in duty_rate_display or "/" in duty_rate_display or "cents" in duty_rate_display.lower() or "+" in duty_rate_display:
+                has_specific_duty = True
+                
+            pct_match = re.search(r'(\d+(\.\d+)?)%', duty_rate_display)
+            if pct_match: parsed_rate = float(pct_match.group(1))
+            else:
+                if not has_specific_duty:
+                    numbers = re.findall(r"[-+]?\d*\.\d+|\d+", duty_rate_display)
+                    if numbers: parsed_rate = float(numbers[0])
+
+        if parsed_rate == 0.0 and not has_specific_duty: duty_rate_display = "Free"
 
         # --- SECTION 301 (WITH HARDCODED FALLBACK) ---
         s301_rate = 0.0
@@ -479,26 +526,98 @@ with left_col:
                     st.info("ℹ️ **Sec 232:** Subject to Annex III Temporary Reduction (10%).")
                 elif not match_annex_1a.empty or not match_annex_1b.empty:
                     is_1a = not match_annex_1a.empty
-                    rate_val = 50.0 if is_1a else 25.0
-                    annex_label = "Annex I-A" if is_1a else "Annex I-B"
-                    code_val = "9903.82.02" if is_1a else "9903.82.03"
+                    is_derivative = not is_1a
+                    is_copper = clean_input.startswith("74")
                     
+                    st.markdown("<div class='questionnaire-header'>🏭 Annex Metal Check (Code 9903.82.xx series)</div>", unsafe_allow_html=True)
+                    
+                    ans_wt = "Yes"
                     needs_weight_check = not clean_input.startswith(("72", "73", "74", "76"))
-                    apply_tariff = True
-                    
                     if needs_weight_check:
-                        st.markdown("<div class='questionnaire-header'>⚖️ Annex Metal Weight Check</div>", unsafe_allow_html=True)
                         ans_wt = st.radio("Is the applicable metal at least 15% of the total article weight?", ["No", "Yes"], index=0, horizontal=True, key="wt_check")
-                        if ans_wt == "No":
-                            apply_tariff = False
-                            st.success("✅ **Sec 232:** Exempted because applicable metal is less than 15% by weight.")
                     
+                    apply_tariff = True
+                    rate_val = 50.0
+                    code_val = "9903.82.02"
+                    label = f"Sec 232 ({'Deriv' if is_derivative else 'Non-Deriv'})"
+                    
+                    if ans_wt == "No":
+                        apply_tariff = False
+                        code_val = "9903.82.03"
+                        rate_val = 0.0
+                        s232_results.append({"label": label, "rate": rate_val, "base_rate": rate_val, "code": code_val, "is_subject": True})
+                        st.success("✅ **Sec 232:** Exempted (9903.82.03) because applicable metal < 15%.")
+                    
+                    if apply_tariff and clean_input.startswith(("84", "85", "87")):
+                        ans_moto = st.radio("Is this for US motorcycle manufacturing?", ["No", "Yes"], index=0, horizontal=True, key="moto_check")
+                        if ans_moto == "Yes":
+                            apply_tariff = False
+                            code_val = "9903.82.13"
+                            rate_val = 0.0
+                            s232_results.append({"label": label, "rate": rate_val, "base_rate": rate_val, "code": code_val, "is_subject": True})
+                            st.success("✅ **Sec 232:** Exempted (9903.82.13) for US motorcycle manufacturing.")
+
                     if apply_tariff:
+                        if iso_code == "RU":
+                            ru_options = [
+                                "9903.82.14 - Russia steel/copper (50%)",
+                                "9903.82.15 - Russia copper + derivative steel (10%)",
+                                "9903.82.16 - Russia copper + derivative steel (25%)",
+                                "9903.82.17 - Russia derivative steel (25%)"
+                            ]
+                            ru_choice = st.selectbox("Select Russia Exception Code", ru_options)
+                            code_val = ru_choice.split(" - ")[0].strip()
+                            rate_val = float(ru_choice.split("(")[1].split("%")[0])
+                        else:
+                            metal_opts = ["None / Other Metal Origin", "95% US Metal"]
+                            if iso_code == "GB":
+                                metal_opts.append("95% UK Metal")
+                            
+                            metal_origin = st.radio("Qualifying Metal Origin", metal_opts, index=0, horizontal=True)
+                            
+                            if metal_origin == "95% UK Metal":
+                                if is_derivative:
+                                    code_val = "9903.82.05"
+                                    rate_val = 15.0
+                                else:
+                                    code_val = "9903.82.04"
+                                    rate_val = 25.0
+                            elif metal_origin == "95% US Metal":
+                                if is_copper:
+                                    code_val = "9903.82.06"
+                                    rate_val = 10.0
+                                elif is_derivative:
+                                    ans_06 = st.radio("Qualifies for 9903.82.06 (Copper/Deriv 10%)?", ["No", "Yes"], index=0, horizontal=True, key="q06_check")
+                                    if ans_06 == "Yes":
+                                        code_val = "9903.82.06"
+                                        rate_val = 10.0
+                                    else:
+                                        if parsed_rate < 10.0:
+                                            code_val = "9903.82.07"
+                                            rate_val = max(10.0 - parsed_rate, 0.0)
+                                        else:
+                                            code_val = "9903.82.08"
+                                            rate_val = 0.0
+                                else:
+                                    code_val = "9903.82.02"
+                                    rate_val = 50.0
+                            else: # None / Other Metal Origin
+                                if is_1a:
+                                    code_val = "9903.82.02"
+                                    rate_val = 50.0
+                                elif is_derivative:
+                                    code_val = "9903.82.09"
+                                    rate_val = 25.0
+                                else:
+                                    # Fallback for copper articles that are neither 1a nor 1b
+                                    code_val = "9903.82.02"
+                                    rate_val = 50.0
+                                    
                         s232_results.append({
-                            "label": f"Sec 232 ({annex_label})", "rate": rate_val, "base_rate": rate_val, 
+                            "label": label, "rate": rate_val, "base_rate": rate_val, 
                             "code": code_val, "is_subject": True
                         })
-                        st.warning(f"⚠️ **Sec 232:** Subject to {annex_label} {int(rate_val)}% Tariff!")
+                        st.warning(f"⚠️ **Sec 232:** Subject to {code_val} {rate_val:.2f}% Tariff!")
 
         has_s232 = any(res["is_subject"] for res in s232_results)
 
@@ -557,39 +676,6 @@ with right_col:
         else:
             country_name_only = origin.split(" - ")[1].strip() if " - " in origin else origin
 
-            active_rate_text = gen_rate_text or "Free"
-            duty_label = "Col 1 Duty"
-            
-            if iso_code in COL2_COUNTRIES:
-                active_rate_text = col2_rate_text or "None"
-                duty_label = f"Col 2 Duty"
-                fta_applied = False 
-            else:
-                if fta_applied:
-                    rate_part = spl_rate_text.split("(")[0].strip()
-                    active_rate_text = rate_part if rate_part else "Free"
-                    duty_label = f"FTA Duty"
-            
-            duty_rate_display = str(active_rate_text).replace(' 1/', '').strip()
-            parsed_rate = 0.0
-            has_specific_duty = False
-
-            if "Free" in duty_rate_display or duty_rate_display == "None" or duty_rate_display == "":
-                duty_rate_display = "Free"
-                parsed_rate = 0.0
-            else:
-                if "¢" in duty_rate_display or "/" in duty_rate_display or "cents" in duty_rate_display.lower() or "+" in duty_rate_display:
-                    has_specific_duty = True
-                    
-                pct_match = re.search(r'(\d+(\.\d+)?)%', duty_rate_display)
-                if pct_match: parsed_rate = float(pct_match.group(1))
-                else:
-                    if not has_specific_duty:
-                        numbers = re.findall(r"[-+]?\d*\.\d+|\d+", duty_rate_display)
-                        if numbers: parsed_rate = float(numbers[0])
-
-            if parsed_rate == 0.0 and not has_specific_duty: duty_rate_display = "Free"
-
             if iso_code == "CN" and claim_301 == "No":
                 match_301 = check_db_match(df_301, clean_input)
                 if not match_301.empty:
@@ -619,11 +705,6 @@ with right_col:
                         else:
                             res["rate"] = min(res["rate"], 15.0)
                             res["base_rate"] = min(res["base_rate"], 15.0)
-                    elif iso_code == "GB" and any(m in res["label"] for m in ["Steel", "Aluminum", "Copper"]):
-                        res["rate"] = 25.0
-                        res["base_rate"] = 25.0
-                        if "Steel" in res["label"]: res["code"] = "9903.81.97"
-                        if "Aluminum" in res["label"]: res["code"] = "9903.85.14"
 
             # SEC 122 BASE RATE (10.0%)
             base_s122_rate = 0.0 if claim_122 == "Yes" else 10.0
