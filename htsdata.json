@@ -83499,7 +83499,7 @@
 }, {
   "htsno" : "2404.19.05.10",
   "indent" : "5",
-  "description" : "Disposable electronic cigarettes (e-cigarettes) and similar disposable personal electronic vaporizing devices containing nicotine",
+  "description" : "Disposable electronic cigarettes (e-cigarettes) and similar disposable personal electronic vaporizing devices without nicotine",
   "superior" : null,
   "units" : [ "kg" ],
   "general" : "",
@@ -83542,7 +83542,7 @@
 }, {
   "htsno" : "2404.19.10.10",
   "indent" : "5",
-  "description" : "Disposable electronic cigarettes (e-cigarettes) and similar disposable personal electronic vaporizing devices containing nicotine",
+  "description" : "Disposable electronic cigarettes (e-cigarettes) and similar disposable personal electronic vaporizing devices without nicotine",
   "superior" : null,
   "units" : [ "kg" ],
   "general" : "",
@@ -307343,15 +307343,15 @@
 }, {
   "htsno" : "7108",
   "indent" : "0",
-  "description" : "Gold (including gold plated with platinum) unwrought or in semimanufactured forms, or in powder form:",
+  "description" : "Gold (including gold plated with platinum) unwrought or in semi-manufactured forms, or in powder form:",
   "superior" : null,
   "units" : [ ],
   "general" : "",
   "special" : "",
   "other" : "",
   "footnotes" : [ ],
-  "quotaQuantity" : "",
-  "additionalDuties" : "",
+  "quotaQuantity" : null,
+  "additionalDuties" : null,
   "addiitionalDuties" : null
 }, {
   "htsno" : "",
@@ -395623,7 +395623,7 @@
   "other" : "35%",
   "footnotes" : [ {
     "columns" : [ "general" ],
-    "value" : "See 9903.45.25 and 9903.88.02. ",
+    "value" : "See 9903.88.02. ",
     "type" : "endnote"
   } ],
   "quotaQuantity" : null,
@@ -395653,7 +395653,7 @@
   "other" : "35%",
   "footnotes" : [ {
     "columns" : [ "general" ],
-    "value" : "See 9903.45.25 and 9903.88.02. ",
+    "value" : "See 9903.88.02. ",
     "type" : "endnote"
   } ],
   "quotaQuantity" : null,
@@ -395734,7 +395734,7 @@
   "other" : "35%",
   "footnotes" : [ {
     "columns" : [ "general" ],
-    "value" : "See 9903.45.25 and 9903.88.03. ",
+    "value" : "See 9903.88.03. ",
     "type" : "endnote"
   } ],
   "quotaQuantity" : null,
@@ -398088,7 +398088,7 @@
   "other" : "40%",
   "footnotes" : [ {
     "columns" : [ "general" ],
-    "value" : "See 9903.45.25 and 9903.88.03. ",
+    "value" : "See 9903.88.03. ",
     "type" : "endnote"
   } ],
   "quotaQuantity" : null,
@@ -408741,7 +408741,7 @@
   "other" : "",
   "footnotes" : [ {
     "columns" : [ "desc" ],
-    "value" : "See statistical note 5 to this chapter.",
+    "value" : "See statistical note 6 to this chapter. ",
     "type" : "endnote"
   } ],
   "quotaQuantity" : null,
@@ -408758,7 +408758,7 @@
   "other" : "",
   "footnotes" : [ {
     "columns" : [ "desc" ],
-    "value" : "See statistical note 5 to this chapter.",
+    "value" : "See statistical note 6 to this chapter. ",
     "type" : "endnote"
   } ],
   "quotaQuantity" : null,
@@ -408775,7 +408775,7 @@
   "other" : "",
   "footnotes" : [ {
     "columns" : [ "desc" ],
-    "value" : "See statistical note 5 to this chapter.  ",
+    "value" : "See statistical note 6 to this chapter.  ",
     "type" : "endnote"
   } ],
   "quotaQuantity" : null,
@@ -408792,7 +408792,7 @@
   "other" : "",
   "footnotes" : [ {
     "columns" : [ "desc" ],
-    "value" : "See statistical note 5 to this chapter. ",
+    "value" : "See statistical note 6 to this chapter. ",
     "type" : "endnote"
   } ],
   "quotaQuantity" : null,
@@ -412456,7 +412456,7 @@
 }, {
   "htsno" : "8539.52.00.10",
   "indent" : "3",
-  "description" : "Of a type specified in statistical note 7(a) to this chapter",
+  "description" : "Of a type specified in statistical note 8(a) to this chapter",
   "superior" : null,
   "units" : [ "No." ],
   "general" : "",
@@ -412469,7 +412469,7 @@
 }, {
   "htsno" : "8539.52.00.20",
   "indent" : "3",
-  "description" : "Of a type specified in statistical note 7(b) to this chapter",
+  "description" : "Of a type specified in statistical note 8(b) to this chapter",
   "superior" : null,
   "units" : [ "No." ],
   "general" : "",
@@ -412482,7 +412482,7 @@
 }, {
   "htsno" : "8539.52.00.30",
   "indent" : "3",
-  "description" : "Of a type specified in statistical note 7(c) to this chapter",
+  "description" : "Of a type specified in statistical note 8(c) to this chapter",
   "superior" : null,
   "units" : [ "No." ],
   "general" : "",
@@ -412495,7 +412495,7 @@
 }, {
   "htsno" : "8539.52.00.40",
   "indent" : "3",
-  "description" : "Of a type specified in statistical note 7(d) to this chapter",
+  "description" : "Of a type specified in statistical note 8(d) to this chapter",
   "superior" : null,
   "units" : [ "No." ],
   "general" : "",
@@ -413831,7 +413831,7 @@
   "other" : "35%",
   "footnotes" : [ {
     "columns" : [ "general" ],
-    "value" : "See 9903.45.21, 9903.45.22, 9903.45.27 and 9903.91.02. ",
+    "value" : "See 9903.91.02. ",
     "type" : "endnote"
   } ],
   "quotaQuantity" : null,
@@ -413840,7 +413840,7 @@
 }, {
   "htsno" : "8541.42.00.10",
   "indent" : "3",
-  "description" : "Crystalline silicon photovoltaic cells of a kind described in statistical note 10 to this chapter",
+  "description" : "Crystalline silicon photovoltaic cells of a kind described in statistical note 12 to this chapter",
   "superior" : null,
   "units" : [ "No.", "W" ],
   "general" : "",
@@ -413874,7 +413874,7 @@
   "other" : "35%",
   "footnotes" : [ {
     "columns" : [ "general" ],
-    "value" : "See 9903.45.25, 9903.45.27 and 9903.91.02 . ",
+    "value" : "See 9903.91.02. ",
     "type" : "endnote"
   } ],
   "quotaQuantity" : null,
@@ -413883,17 +413883,13 @@
 }, {
   "htsno" : "8541.43.00.10",
   "indent" : "3",
-  "description" : "Crystalline silicon photovoltaic cells of a kind described in statistical note 10 to this chapter",
+  "description" : "Crystalline silicon photovoltaic cells of a kind described in statistical note 12 to this chapter",
   "superior" : null,
   "units" : [ "No.", "W" ],
   "general" : "",
   "special" : "",
   "other" : "",
-  "footnotes" : [ {
-    "columns" : [ "desc" ],
-    "value" : "See 9903.45.29. ",
-    "type" : "endnote"
-  } ],
+  "footnotes" : [ ],
   "quotaQuantity" : null,
   "additionalDuties" : null,
   "addiitionalDuties" : null
@@ -415786,7 +415782,7 @@
 }, {
   "htsno" : "8544.42.90.10",
   "indent" : "5",
-  "description" : "Extension cords as defined in statistical note 6 to this chapter",
+  "description" : "Extension cords as defined in statistical note 7 to this chapter",
   "superior" : null,
   "units" : [ "No." ],
   "general" : "",
@@ -502989,6 +502985,204 @@
   "additionalDuties" : "",
   "addiitionalDuties" : null
 }, {
+  "htsno" : "9903.03.01",
+  "indent" : "0",
+  "description" : "Except for products described in headings 9903.03.02–9903.03.11, articles the product of any country, as provided for in subdivision (aa) of U.S. note 2 to this subchapter",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading + 10%",
+  "special" : "The duty provided in the applicable subheading + 10%",
+  "other" : "The duty provided in the applicable subheading + 10%",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " The duty provided in the applicable subheading + 10% ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
+  "htsno" : "9903.03.02",
+  "indent" : "0",
+  "description" : "Articles the product of any country that (1) were loaded onto a vessel at the port of loading and in transit on the final mode of transit prior to entry into the United States, before 12:01 a.m. eastern standard time on February 24, 2026; and (2) are entered for consumption, or withdrawn from warehouse for consumption, before 12:01 a.m. eastern standard time on February 28, 2026",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading",
+  "special" : "The duty provided in the applicable subheading",
+  "other" : "The duty provided in the applicable subheading",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " See chapter 99 statistical note 1. ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
+  "htsno" : "9903.03.03",
+  "indent" : "0",
+  "description" : "Articles the product of any country, as provided for in subdivision (aa)(ii) of U.S. note 2 to this subchapter",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading",
+  "special" : "The duty provided in the applicable subheading",
+  "other" : "The duty provided in the applicable subheading",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " See chapter 99 statistical note 1. ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
+  "htsno" : "9903.03.04",
+  "indent" : "0",
+  "description" : "Articles the product of any country, as provided for in subdivision (aa)(iii) of U.S. note 2 to this subchapter",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading",
+  "special" : "The duty provided in the applicable subheading",
+  "other" : "The duty provided in the applicable subheading",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " See chapter 99 statistical note 1. ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
+  "htsno" : "9903.03.05",
+  "indent" : "0",
+  "description" : "Articles of civil aircraft (all aircraft other than military aircraft); their engines, parts and components; their other parts, components and subassemblies; and ground flight simulators and their parts and components of any country, provided for in subdivision (aa)(iv) of U.S. note 2 to this subchapter",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading",
+  "special" : "The duty provided in the applicable subheading",
+  "other" : "The duty provided in the applicable subheading",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " See chapter 99 statistical note 1. ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
+  "htsno" : "9903.03.06",
+  "indent" : "0",
+  "description" : "Articles of iron or steel, derivative articles of iron or steel, articles of aluminum, derivative articles of aluminum, passenger vehicles (sedans, sport utility vehicles, crossover utility vehicles, minivans and cargo vans) and light trucks and parts of passenger vehicles (sedans, sport utility vehicles, crossover utility vehicles, minivans and cargo vans) and light trucks, semiconductor articles, semi-finished copper and intensive copper derivative products, wood products, or medium- and heavy-duty vehicles or medium- and heavy-duty vehicle parts, of any country, as provided in subdivision (aa)(v) of U.S. note 2 to this subchapter",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading",
+  "special" : "The duty provided in the applicable subheading",
+  "other" : "The duty provided in the applicable subheading",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " See chapter 99 statistical note 1. ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
+  "htsno" : "9903.03.07",
+  "indent" : "0",
+  "description" : "Articles the product of Canada, as provided for in subdivision (aa)(vi) of U.S. note 2 to this subchapter",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading",
+  "special" : "The duty provided in the applicable subheading",
+  "other" : "The duty provided in the applicable subheading",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " See chapter 99 statistical note 1. ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
+  "htsno" : "9903.03.08",
+  "indent" : "0",
+  "description" : "Articles the product of Mexico, as provided for in subdivision (aa)(vii) of U.S. note 2 to this subchapter",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading",
+  "special" : "The duty provided in the applicable subheading",
+  "other" : "The duty provided in the applicable subheading",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " See chapter 99 statistical note 1. ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
+  "htsno" : "9903.03.09",
+  "indent" : "0",
+  "description" : "Articles of textiles or apparel the product of Costa Rica, the Dominican Republic, El Salvador, Guatemala, Honduras or Nicaragua, as provided for in subdivision (aa)(viii) of U.S. note 2 to this subchapter",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading",
+  "special" : "The duty provided in the applicable subheading",
+  "other" : "The duty provided in the applicable subheading",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " See chapter 99 statistical note 1. ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
+  "htsno" : "9903.03.10",
+  "indent" : "0",
+  "description" : "Articles that are donations, by persons subject to the jurisdiction of the United States, such as food, clothing and medicine, intended to be used to relieve human suffering",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading",
+  "special" : "The duty provided in the applicable subheading",
+  "other" : "The duty provided in the applicable subheading",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " See chapter 99 statistical note 1. ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
+  "htsno" : "9903.03.11",
+  "indent" : "0",
+  "description" : "Articles that are informational materials, including but not limited to publications, films, posters, phonograph records, photographs, microfilms, microfiche, tapes, compact disks, CD ROMs, artworks and news wire feeds",
+  "superior" : null,
+  "units" : [ ],
+  "general" : "The duty provided in the applicable subheading",
+  "special" : "The duty provided in the applicable subheading",
+  "other" : "The duty provided in the applicable subheading",
+  "footnotes" : [ {
+    "columns" : [ "stat", "units" ],
+    "marker" : "1",
+    "value" : " See chapter 99 statistical note 1. ",
+    "type" : "footnote"
+  } ],
+  "quotaQuantity" : null,
+  "additionalDuties" : "",
+  "addiitionalDuties" : null
+}, {
   "htsno" : "",
   "indent" : "0",
   "description" : "Blue-mold cheese:",
@@ -504844,7 +505038,7 @@
 }, {
   "htsno" : "9903.45.21",
   "indent" : "1",
-  "description" : "If entered in an annual aggregate quantity not exceeding 12.5 gigawatts, under the terms of such note",
+  "description" : "If entered in an annual aggregate quantity not exceeding 12.5 gigawatts, under the terms of such note<b>[Compiler’s note: This subheading and its related note, U.S. note 18 to this subchapter, have expired. See 87 Fed. Reg. 7357.]</b>",
   "superior" : null,
   "units" : [ ],
   "general" : "No change",
@@ -504862,7 +505056,7 @@
 }, {
   "htsno" : "9903.45.22",
   "indent" : "1",
-  "description" : "Other",
+  "description" : "Other <b>[Compiler’s note: This subheading and its related note, U.S. note 18 to this subchapter, have expired. See 87 Fed. Reg. 7357.]</b>",
   "superior" : null,
   "units" : [ ],
   "general" : "30%",
@@ -504885,7 +505079,7 @@
 }, {
   "htsno" : "9903.45.25",
   "indent" : "0",
-  "description" : "Modules as defined in note 18(g) to this subchapter, when the product or originating good of a country other than a country described in note 18(b) to this subchapter, except as provided in heading 9903.45.27 or heading 9903.45.29",
+  "description" : "Modules as defined in note 18(g) to this subchapter, when the product or originating good of a country other than a country described in note 18(b) to this subchapter, except as provided in heading 9903.45.27 or heading 9903.45.29 <b>[Compiler’s note: This heading and its related note, U.S. note 18 to this subchapter, have expired. See 87 Fed. Reg. 7357.]</b>",
   "superior" : null,
   "units" : [ ],
   "general" : "30%",
@@ -504908,7 +505102,7 @@
 }, {
   "htsno" : "9903.45.27",
   "indent" : "0",
-  "description" : "Crystalline silicon photovoltaic cells, as defined in note 18(c) to this subchapter, and modules as defined in note 18(g) to this subchapter, all the foregoing when the product and originating good of Canada",
+  "description" : "Crystalline silicon photovoltaic cells, as defined in note 18(c) to this subchapter, and modules as defined in note 18(g) to this subchapter, all the foregoing when the product and originating good of Canada <b>[Compiler’s note: This heading and its related note, U.S. note 18 to this subchapter, have expired. See 87 Fed. Reg. 7357.]</b>",
   "superior" : null,
   "units" : [ ],
   "general" : "No change",
@@ -504926,7 +505120,7 @@
 }, {
   "htsno" : "9903.45.29",
   "indent" : "0",
-  "description" : "Bifacial solar panels, as defined in and meeting the conditions of U.S. note 18(j) to this subchapter, that absorb light and generate electricity on each side of the panel and that consist of only bifacial solar cells that absorb light and generate electricity on each side of the cells",
+  "description" : "Bifacial solar panels, as defined in and meeting the conditions of U.S. note 18(j) to this subchapter, that absorb light and generate electricity on each side of the panel and that consist of only bifacial solar cells that absorb light and generate electricity on each side of the cells <b>[Compiler’s note: This heading and its related note, U.S. note 18 to this subchapter, have expired. See 87 Fed. Reg. 7357.]</b>",
   "superior" : null,
   "units" : [ ],
   "general" : "No change",
@@ -505901,7 +506095,7 @@
 }, {
   "htsno" : "9903.79.01",
   "indent" : "0",
-  "description" : "Semiconductor articles as provided for in subdivisions (a) and (b) of U.S. note 39 to this subchapter.",
+  "description" : "Semiconductor articles as provided for in subdivisions (a) and (b) of U.S. note 39 to this subchapter",
   "superior" : null,
   "units" : [ ],
   "general" : "The duty provided in the applicable subheading +25%",
@@ -505919,7 +506113,7 @@
 }, {
   "htsno" : "9903.79.02",
   "indent" : "0",
-  "description" : "Articles as provided for in subdivision (c) of U.S. note 39 to this subchapter.",
+  "description" : "Articles as provided for in subdivision (c) of U.S. note 39 to this subchapter",
   "superior" : null,
   "units" : [ ],
   "general" : "The duty provided in the applicable subheading",
@@ -505937,7 +506131,7 @@
 }, {
   "htsno" : "9903.79.03",
   "indent" : "0",
-  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for use in U.S. data centers, as defined in subdivision (d) of U.S. note 39 to this subchapter.",
+  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for use in U.S. data centers, as defined in subdivision (d) of U.S. note 39 to this subchapter",
   "superior" : null,
   "units" : [ ],
   "general" : "The duty provided in the applicable subheading",
@@ -505946,7 +506140,7 @@
   "footnotes" : [ {
     "columns" : [ "stat", "units" ],
     "marker" : "1",
-    "value" : "   See chapter 99 statistical note 1.   ",
+    "value" : " See chapter 99 statistical note 1. ",
     "type" : "footnote"
   } ],
   "quotaQuantity" : null,
@@ -505955,7 +506149,7 @@
 }, {
   "htsno" : "9903.79.04",
   "indent" : "0",
-  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for repairs or replacement in the United States.",
+  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for repairs or replacement in the United States",
   "superior" : null,
   "units" : [ ],
   "general" : "The duty provided in the applicable subheading",
@@ -505964,7 +506158,7 @@
   "footnotes" : [ {
     "columns" : [ "stat", "units" ],
     "marker" : "1",
-    "value" : "   See chapter 99 statistical note 1.   ",
+    "value" : " See chapter 99 statistical note 1. ",
     "type" : "footnote"
   } ],
   "quotaQuantity" : null,
@@ -505973,7 +506167,7 @@
 }, {
   "htsno" : "9903.79.05",
   "indent" : "0",
-  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for research and development in the United States, as defined in subdivision (d) of U.S. note 39 to this subchapter.",
+  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for research and development in the United States, as defined in subdivision (d) of U.S. note 39 to this subchapter",
   "superior" : null,
   "units" : [ ],
   "general" : "The duty provided in the applicable subheading",
@@ -505982,7 +506176,7 @@
   "footnotes" : [ {
     "columns" : [ "stat", "units" ],
     "marker" : "1",
-    "value" : "   See chapter 99 statistical note 1.   ",
+    "value" : " See chapter 99 statistical note 1. ",
     "type" : "footnote"
   } ],
   "quotaQuantity" : null,
@@ -505991,7 +506185,7 @@
 }, {
   "htsno" : "9903.79.06",
   "indent" : "0",
-  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for use by startups in the United States, as defined in subdivision (d) of U.S. note 39 to this subchapter.",
+  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for use by startups in the United States, as defined in subdivision (d) of U.S. note 39 to this subchapter",
   "superior" : null,
   "units" : [ ],
   "general" : "The duty provided in the applicable subheading",
@@ -506000,7 +506194,7 @@
   "footnotes" : [ {
     "columns" : [ "stat", "units" ],
     "marker" : "1",
-    "value" : "   See chapter 99 statistical note 1.   ",
+    "value" : " See chapter 99 statistical note 1. ",
     "type" : "footnote"
   } ],
   "quotaQuantity" : null,
@@ -506009,7 +506203,7 @@
 }, {
   "htsno" : "9903.79.07",
   "indent" : "0",
-  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for use in non-data center consumer electronics applications in the United States.",
+  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for use in non-data center consumer electronics applications in the United States",
   "superior" : null,
   "units" : [ ],
   "general" : "The duty provided in the applicable subheading",
@@ -506018,7 +506212,7 @@
   "footnotes" : [ {
     "columns" : [ "stat", "units" ],
     "marker" : "1",
-    "value" : "   See chapter 99 statistical note 1.   ",
+    "value" : " See chapter 99 statistical note 1. ",
     "type" : "footnote"
   } ],
   "quotaQuantity" : null,
@@ -506027,7 +506221,7 @@
 }, {
   "htsno" : "9903.79.08",
   "indent" : "0",
-  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for use in non-data center civil industrial applications in the United States.",
+  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for use in non-data center civil industrial applications in the United States",
   "superior" : null,
   "units" : [ ],
   "general" : "The duty provided in the applicable subheading",
@@ -506036,7 +506230,7 @@
   "footnotes" : [ {
     "columns" : [ "stat", "units" ],
     "marker" : "1",
-    "value" : "   See chapter 99 statistical note 1.   ",
+    "value" : " See chapter 99 statistical note 1. ",
     "type" : "footnote"
   } ],
   "quotaQuantity" : null,
@@ -506045,7 +506239,7 @@
 }, {
   "htsno" : "9903.79.09",
   "indent" : "0",
-  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for use in United States public sector applications.",
+  "description" : "Semiconductor articles, as defined in subdivision (b) of U.S. note 39 to this subchapter, that are for use in United States public sector applications",
   "superior" : null,
   "units" : [ ],
   "general" : "The duty provided in the applicable subheading",

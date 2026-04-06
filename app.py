@@ -38,8 +38,10 @@ html, body, [class*="css"] {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     letter-spacing: -0.5px;
-    line-height: 1.4;
-    padding-bottom: 4px;
+    line-height: 1.5;
+    padding-top: 10px;
+    padding-bottom: 8px;
+    margin: -5px 0;
 }
 .sub-title {
     font-size: 0.9rem;
@@ -281,7 +283,7 @@ def load_pga_data():
             df.columns = df.columns.str.strip()
             col_name = next((col for col in df.columns if 'TARIFF' in col.upper() or 'HTS' in col.upper()), df.columns[0])
             df['clean_hts10'] = df[col_name].astype(str).str.replace(r'\.0$', '', regex=True).str.replace('.', '', regex=False).str.strip()
-            df['clean_hts10'] = df['clean_hts10'].apply(lambda x: x.zfill(10) if x.isdigit() else x)
+            df['clean_hts10'] = df['clean_hts10'].apply(lambda x: str(x).zfill(10) if str(x).isdigit() else x)
             return df
         except: return None
     return None
@@ -296,9 +298,10 @@ if os.path.exists('htsdata.json'):
 
 df_301 = load_csv('section301_rates.csv')
 df_301_exempt = load_csv('sec301_exemptions.csv')
-df_232_steel = load_csv('sec232_steel.csv')
-df_232_alum = load_csv('sec232_aluminum.csv')
-df_232_copper = load_csv('sec232_copper.csv')
+df_232_1a = load_csv('sec232_annex1a.csv')
+df_232_1b = load_csv('sec232_annex1b.csv')
+df_232_2 = load_csv('sec232_annex2.csv')
+df_232_3 = load_csv('sec232_annex3.csv')
 df_232_auto = load_csv('sec232_auto.csv')
 df_232_timber = load_csv('sec232_timber.csv')
 df_232_mhdv = load_csv('sec232_mhdv.csv')
@@ -424,9 +427,6 @@ with left_col:
                     return r, f"Sec 232 ({category_name})", ch99_code
                 return 0.0, "", ""
             
-            r_steel, l_steel, c_steel = get_232_rate_precheck(df_232_steel, 50.0, "Steel", "9903.81.90")
-            r_alum, l_alum, c_alum = get_232_rate_precheck(df_232_alum, 50.0, "Aluminum", "9903.85.07")
-            r_copper, l_copper, c_copper = get_232_rate_precheck(df_232_copper, 50.0, "Copper", "9903.78.01")
             r_auto, l_auto, c_auto = get_232_rate_precheck(df_232_auto, 25.0, "Auto Parts", "9903.94.05")
             r_semi, l_semi, c_semi = get_232_rate_precheck(df_232_semi, 25.0, "Semiconductors", "9903.79.01")
             
@@ -447,8 +447,7 @@ with left_col:
                 l_mhdv = "Sec 232 (MHDV/Buses)"
 
             sec232_matches = []
-            for r, l, c in [(r_copper, l_copper, c_copper), (r_steel, l_steel, c_steel), (r_auto, l_auto, c_auto), 
-                            (r_mhdv, l_mhdv, c_mhdv), (r_semi, l_semi, c_semi), (r_alum, l_alum, c_alum), (r_timber, l_timber, c_timber)]:
+            for r, l, c in [(r_auto, l_auto, c_auto), (r_mhdv, l_mhdv, c_mhdv), (r_semi, l_semi, c_semi), (r_timber, l_timber, c_timber)]:
                 if r > 0: sec232_matches.append((r, l, c))
 
             if sec232_matches:
@@ -457,25 +456,50 @@ with left_col:
                 for idx, (r, l, c) in enumerate(sec232_matches):
                     ans = st.radio(f"Subject to {l} ({r}%)?", ["No", "Yes"], index=0, horizontal=True, key=f"s232_{idx}")
                     
-                    is_split = False
-                    metal_pct = 100.0
-                    metal_type = ""
-                    
-                    if ans == "Yes" and any(m in l for m in ["Steel", "Aluminum", "Copper"]):
-                        is_split = True
-                        if "Steel" in l: metal_type = "Steel"
-                        elif "Aluminum" in l: metal_type = "Aluminum"
-                        elif "Copper" in l: metal_type = "Copper"
-                        metal_pct = st.number_input(f"% of {metal_type} Content by Value", min_value=0.0, max_value=100.0, value=100.0, step=1.0, key=f"pct_{idx}")
-                        
                     s232_results.append({
                         "label": l, "rate": r if ans == "Yes" else 0.0, "base_rate": r, 
                         "code": c if ans == "Yes" else EXEMPT_CODES_232.get(l, "EXEMPT"),
-                        "is_subject": ans == "Yes", "is_split": is_split, "metal_pct": metal_pct, "metal_type": metal_type
+                        "is_subject": ans == "Yes"
                     })
+            
+            # --- ANNEX 232 AUTOMATIC CHECKS ---
+            match_annex_2 = check_db_match(df_232_2, clean_input)
+            match_annex_3 = check_db_match(df_232_3, clean_input)
+            match_annex_1a = check_db_match(df_232_1a, clean_input)
+            match_annex_1b = check_db_match(df_232_1b, clean_input)
+            
+            if not match_annex_2.empty:
+                st.success("✅ **Sec 232:** Exempt under Annex II (Removed from Scope).")
+            else:
+                if not match_annex_3.empty:
+                    s232_results.append({
+                        "label": "Sec 232 (Annex III)", "rate": 10.0, "base_rate": 10.0, 
+                        "code": "9903.85.67", "is_subject": True
+                    })
+                    st.info("ℹ️ **Sec 232:** Subject to Annex III Temporary Reduction (10%).")
+                elif not match_annex_1a.empty or not match_annex_1b.empty:
+                    is_1a = not match_annex_1a.empty
+                    rate_val = 50.0 if is_1a else 25.0
+                    annex_label = "Annex I-A" if is_1a else "Annex I-B"
+                    code_val = "9903.82.02" if is_1a else "9903.82.03"
+                    
+                    needs_weight_check = not clean_input.startswith(("72", "73", "74", "76"))
+                    apply_tariff = True
+                    
+                    if needs_weight_check:
+                        st.markdown("<div class='questionnaire-header'>⚖️ Annex Metal Weight Check</div>", unsafe_allow_html=True)
+                        ans_wt = st.radio("Is the applicable metal at least 15% of the total article weight?", ["No", "Yes"], index=0, horizontal=True, key="wt_check")
+                        if ans_wt == "No":
+                            apply_tariff = False
+                            st.success("✅ **Sec 232:** Exempted because applicable metal is less than 15% by weight.")
+                    
+                    if apply_tariff:
+                        s232_results.append({
+                            "label": f"Sec 232 ({annex_label})", "rate": rate_val, "base_rate": rate_val, 
+                            "code": code_val, "is_subject": True
+                        })
+                        st.warning(f"⚠️ **Sec 232:** Subject to {annex_label} {int(rate_val)}% Tariff!")
 
-        split_res = next((res for res in s232_results if res.get("is_split") and res.get("metal_pct", 100) < 100.0), None)
-        do_split = split_res is not None
         has_s232 = any(res["is_subject"] for res in s232_results)
 
         # --- SECTION 122 DYNAMIC ENGINE (10%) ---
@@ -484,7 +508,7 @@ with left_col:
         if clean_input:
             st.markdown("<div class='questionnaire-header'>🛡️ Section 122 Exemption Check</div>", unsafe_allow_html=True)
             
-            if has_s232 and not do_split:
+            if has_s232:
                 st.success("✅ **Sec 122:** Automatically exempt due to Section 232 penalty (Code 9903.03.06).")
                 claim_122 = "Yes"
                 s122_exempt_code = "9903.03.06"
@@ -518,19 +542,16 @@ with left_col:
                     else:
                         claim_122 = st.radio(f"**Sec 122:** Conditionally exempt IF: {s122_scope} / {s122_desc}. Do you meet this?", ["No", "Yes"], index=0, horizontal=True)
                 else:
-                    if do_split:
-                        st.warning("⚠️ **Sec 122:** Non-metal portion subject to 10% Global Tariff.")
-                    else:
-                        st.info("No exemption found. Subject to 10% Global Tariff.")
+                    st.info("No exemption found. Subject to 10% Global Tariff.")
 
+    # Removed run_btn to allow purely reactive calculations
     st.write("") 
-    run_btn = st.button("🚀 Calculate Duties", type="primary", use_container_width=True)
 
 with right_col:
     res_header1, res_header2 = st.columns([3, 1])
     res_header1.subheader("Results", anchor=False)
     
-    if run_btn:
+    if clean_input:
         if df is None: st.error("Database not found.")
         elif not hts_input: st.warning("Please search for an HTS code.")
         else:
@@ -607,60 +628,18 @@ with right_col:
             # SEC 122 BASE RATE (10.0%)
             base_s122_rate = 0.0 if claim_122 == "Yes" else 10.0
 
-            if do_split:
-                metal_pct = split_res["metal_pct"]
-                metal_type = split_res["metal_type"]
-                metal_val = value * (metal_pct / 100.0)
-                non_metal_val = value - metal_val
+            duty = value * (parsed_rate / 100.0)
+            s301 = value * (s301_rate / 100.0) if claim_301 == "No" else 0.0
+            s232 = sum(value * (res["rate"] / 100.0) for res in s232_results)
+            s122_rate = 0.0 if has_s232 else base_s122_rate
+            s122_total = value * (s122_rate / 100.0)
                 
-                duty_metal = metal_val * (parsed_rate / 100.0)
-                duty_non_metal = non_metal_val * (parsed_rate / 100.0)
-                
-                s301_metal = metal_val * (s301_rate / 100.0) if claim_301 == "No" else 0.0
-                s301_non_metal = non_metal_val * (s301_rate / 100.0) if claim_301 == "No" else 0.0
-                
-                s122_non_metal_rate = base_s122_rate
-                s122_non_metal = non_metal_val * (s122_non_metal_rate / 100.0)
-                s122_metal_rate = 0.0
-                s122_metal = 0.0
-                
-                s232_metal = 0.0
-                s232_non_metal = 0.0
-                for r in s232_results:
-                    if r["is_subject"]:
-                        if r == split_res: s232_metal += metal_val * (r["rate"] / 100.0)
-                        else:
-                            s232_metal += metal_val * (r["rate"] / 100.0)
-                            s232_non_metal += non_metal_val * (r["rate"] / 100.0)
-                            
-                s232_total = s232_metal + s232_non_metal
-                
-                mpf_base = value * 0.003464
-                mpf = max(33.58, min(mpf_base, 651.50))
-                mpf_metal = mpf * (metal_val / value)
-                mpf_non_metal = mpf * (non_metal_val / value)
-                
-                hmf = (value * 0.00125) if mode == "Ocean" else 0.0
-                hmf_metal = hmf * (metal_val / value)
-                hmf_non_metal = hmf * (non_metal_val / value)
-                
-                s122_total = s122_metal + s122_non_metal
-                total_duties = duty_metal + duty_non_metal + s301_metal + s301_non_metal + s232_total + s122_total
-                total_duties_and_fees = total_duties + mpf + hmf
-                effective_rate = (total_duties_and_fees / value) * 100 if value > 0 else 0
-            else:
-                duty = value * (parsed_rate / 100.0)
-                s301 = value * (s301_rate / 100.0) if claim_301 == "No" else 0.0
-                s232 = sum(value * (res["rate"] / 100.0) for res in s232_results)
-                s122_rate = 0.0 if has_s232 else base_s122_rate
-                s122_total = value * (s122_rate / 100.0)
-                    
-                mpf_base = value * 0.003464
-                mpf = max(33.58, min(mpf_base, 651.50))
-                hmf = (value * 0.00125) if mode == "Ocean" else 0.0
-                total_duties = duty + s301 + s232 + s122_total
-                total_duties_and_fees = total_duties + mpf + hmf
-                effective_rate = (total_duties_and_fees / value) * 100 if value > 0 else 0
+            mpf_base = value * 0.003464
+            mpf = max(33.58, min(mpf_base, 651.50))
+            hmf = (value * 0.00125) if mode == "Ocean" else 0.0
+            total_duties = duty + s301 + s232 + s122_total
+            total_duties_and_fees = total_duties + mpf + hmf
+            effective_rate = (total_duties_and_fees / value) * 100 if value > 0 else 0
 
             dashboard_html = f"""
             <div class="results-cards-container">
@@ -677,7 +656,7 @@ with right_col:
             if has_specific_duty:
                 st.markdown("<div class='compact-alert alert-info'>ℹ️ <b>Specific Duty Detected:</b> Excludes weight-based portion (e.g., ¢/kg). Evaluate manually.</div>", unsafe_allow_html=True)
 
-            def render_7501_line(line_num, line_label, line_val, duty_val, s301_val, s122_val, mpf_val, hmf_val, is_metal_line=False, split_res_ref=None):
+            def render_7501_line(line_num, line_label, line_val, duty_val, s301_val, s122_val, mpf_val, hmf_val):
                 html = f'<div class="line-item-box"><div class="line-item-header"><span>Line {line_num} {line_label}</span><span>Value: ${line_val:,.2f}</span></div>'
                 
                 if s301_rate > 0.0 or iso_code == "CN":
@@ -685,7 +664,6 @@ with right_col:
                     elif s301_rate > 0.0: html += f'<div class="line-item-grid"><div class="col-code">{s301_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #e0e7ff; color: #4f46e5;">Sec 301 China</span></div><div class="col-rate">{s301_rate}%</div><div class="col-val">${s301_val:,.2f}</div></div>'
                 
                 for res in s232_results:
-                    if res == split_res_ref and not is_metal_line: continue
                     is_active_penalty = res["is_subject"]
                     if is_active_penalty:
                         penalty_amt = line_val * (res["base_rate"] / 100.0)
@@ -695,7 +673,7 @@ with right_col:
                         html += f'<div class="line-item-grid"><div class="col-code">{exempt_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #dcfce7; color: #166534;">{res["label"]} (EXEMPT)</span></div><div class="col-rate">Free</div><div class="col-val">$0.00</div></div>'
                 
                 # SECTION 122 7501 LOGIC
-                if is_metal_line or (has_s232 and not do_split):
+                if has_s232:
                     line_s122_rate = 0.0
                     line_s122_tag = "Sec 122 (EXEMPT via Sec 232)"
                     line_s122_color = "background-color: #dcfce7; color: #166534;"
@@ -727,13 +705,7 @@ with right_col:
                 return html
 
             with st.expander("Line Item Details", expanded=True):
-                final_html = ""
-                if do_split:
-                    final_html += render_7501_line(1, f"(Non-{metal_type})", non_metal_val, duty_non_metal, s301_non_metal, s122_non_metal, mpf_non_metal, hmf_non_metal, False, split_res)
-                    final_html += render_7501_line(2, f"({metal_type})", metal_val, duty_metal, s301_metal, s122_metal, mpf_metal, hmf_metal, True, split_res)
-                else:
-                    final_html += render_7501_line(1, "", value, duty, s301, s122_total, mpf, hmf, False, None)
-                    
+                final_html = render_7501_line(1, "", value, duty, s301, s122_total, mpf, hmf)
                 st.markdown(final_html.replace('\n', '').strip(), unsafe_allow_html=True)
                 
             if fta_applied: 
@@ -777,9 +749,10 @@ with st.sidebar:
     c_301 = f"{len(df_301):,}" if df_301 is not None else "Missing"
     c_301_ex = f"{len(df_301_exempt):,}" if df_301_exempt is not None else "Missing"
     c_122 = f"{len(df_122):,}" if df_122 is not None else "Missing"
-    c_stl = f"{len(df_232_steel):,}" if df_232_steel is not None else "Missing"
-    c_alu = f"{len(df_232_alum):,}" if df_232_alum is not None else "Missing"
-    c_cop = f"{len(df_232_copper):,}" if df_232_copper is not None else "Missing"
+    c_1a = f"{len(df_232_1a):,}" if df_232_1a is not None else "Missing"
+    c_1b = f"{len(df_232_1b):,}" if df_232_1b is not None else "Missing"
+    c_2 = f"{len(df_232_2):,}" if df_232_2 is not None else "Missing"
+    c_3 = f"{len(df_232_3):,}" if df_232_3 is not None else "Missing"
     c_aut = f"{len(df_232_auto):,}" if df_232_auto is not None else "Missing"
     c_tim = f"{len(df_232_timber):,}" if df_232_timber is not None else "Missing"
     c_mhd = f"{len(df_232_mhdv):,}" if df_232_mhdv is not None else "Missing"
@@ -803,9 +776,10 @@ with st.sidebar:
         
         <div class="sidebar-divider"></div>
         <div class="sidebar-category">🏗️ Section 232 Subsystems</div>
-        <div class="sidebar-item">{'✅' if c_stl != 'Missing' else '⚠️'} Steel: {c_stl}</div>
-        <div class="sidebar-item">{'✅' if c_alu != 'Missing' else '⚠️'} Aluminum: {c_alu}</div>
-        <div class="sidebar-item">{'✅' if c_cop != 'Missing' else '⚠️'} Copper: {c_cop}</div>
+        <div class="sidebar-item">{'✅' if c_1a != 'Missing' else '⚠️'} Annex I-A: {c_1a}</div>
+        <div class="sidebar-item">{'✅' if c_1b != 'Missing' else '⚠️'} Annex I-B: {c_1b}</div>
+        <div class="sidebar-item">{'✅' if c_2 != 'Missing' else '⚠️'} Annex II: {c_2}</div>
+        <div class="sidebar-item">{'✅' if c_3 != 'Missing' else '⚠️'} Annex III: {c_3}</div>
         <div class="sidebar-item">{'✅' if c_aut != 'Missing' else '⚠️'} Auto Parts: {c_aut}</div>
         <div class="sidebar-item">{'✅' if c_tim != 'Missing' else '⚠️'} Timber/Lumber: {c_tim}</div>
         <div class="sidebar-item">{'✅' if c_mhd != 'Missing' else '⚠️'} MHDV/Buses: {c_mhd}</div>
