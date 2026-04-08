@@ -310,6 +310,37 @@ df_122 = load_csv('sec122_exemptions.csv')
 df_adcvd = load_csv('adcvd_warnings.csv')
 df_pga = load_pga_data()
 
+# --- LOAD SECTION 232 SUBDIVISIONS ---
+@st.cache_data
+def load_sec232_subdivisions():
+    try:
+        with open('sec232_subdivisions.json', 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        st.error(f"Error loading Sec 232 Subdivisions: {e}")
+        return {}
+
+SEC232_SUBDIVS = load_sec232_subdivisions()
+
+def get_hts_subdivisions(clean_input):
+    """Returns a list of matching subdivision keys (i to x) for the given input."""
+    if not clean_input: return []
+    matches = []
+    # Check prefixes [Full, 8, 6, 4]
+    targets = [clean_input[:10], clean_input[:8], clean_input[:6], clean_input[:4]]
+    
+    for subdiv_key, hts_list in SEC232_SUBDIVS.items():
+        found = False
+        for db_hts in hts_list:
+            clean_db = db_hts.replace('.', '').strip()
+            # If the database code is a prefix of our input OR vice-versa for higher-level headings
+            if clean_input.startswith(clean_db) or any(t == clean_db for t in targets):
+                found = True
+                break
+        if found:
+            matches.append(subdiv_key)
+    return matches
+
 # --- SMART MATCHING ENGINE (FIXES USTR TRAILING ZEROS BUG) ---
 def check_db_match(df_db, clean_input):
     if df_db is None or df_db.empty or not clean_input: return pd.DataFrame()
@@ -460,163 +491,117 @@ with left_col:
                 claim_301 = st.radio(f"**Exemption Found:** Is this product specifically: *{s301_desc}*?", ["No", "Yes"], index=0, horizontal=True)
                 if claim_301 == "Yes": s301_code = "9903.88.69"
 
-        # --- SECTION 232 ---
+        # --- SECTION 232 (FULL SUITE) ---
         s232_results = []
         if clean_input:
+            # 1. SPECIAL CATEGORY PRE-CHECKS (Auto, Semi, Timber, MHDV)
             def get_232_rate_precheck(db, default_rate, category_name, ch99_code):
                 m = check_db_match(db, clean_input)
                 if not m.empty:
                     r = default_rate
-                    if category_name in ["Steel", "Aluminum", "Copper"]: r = 50.0
-                    elif 'Rate' in m.columns:
+                    if 'Rate' in m.columns:
                         try: r = float(m.iloc[0]['Rate'])
                         except: pass
                     return r, f"Sec 232 ({category_name})", ch99_code
                 return 0.0, "", ""
             
-            r_auto, l_auto, c_auto = get_232_rate_precheck(df_232_auto, 25.0, "Auto Parts", "9903.94.05")
-            r_semi, l_semi, c_semi = get_232_rate_precheck(df_232_semi, 25.0, "Semiconductors", "9903.79.01")
+            check_list = [
+                get_232_rate_precheck(df_232_auto, 25.0, "Auto Parts", "9903.94.05"),
+                get_232_rate_precheck(df_232_semi, 25.0, "Semiconductors", "9903.79.01")
+            ]
             
             m_timber = check_db_match(df_232_timber, clean_input)
-            r_timber, l_timber, c_timber = 0.0, "", ""
             if not m_timber.empty:
                 r_timber = float(m_timber.iloc[0].get('Rate', 10.0))
                 c_timber = "9903.76.02" if clean_input.startswith("9401") else ("9903.76.03" if clean_input.startswith("9403") else "9903.76.01")
-                l_timber = "Sec 232 (Timber/Lumber)"
+                check_list.append((r_timber, "Sec 232 (Timber/Lumber)", c_timber))
 
             m_mhdv = check_db_match(df_232_mhdv, clean_input)
-            r_mhdv, l_mhdv, c_mhdv = 0.0, "", ""
             if not m_mhdv.empty:
                 r_mhdv = float(m_mhdv.iloc[0].get('Rate', 25.0))
-                if clean_input.startswith("8702"): c_mhdv = "9903.74.02"
-                elif clean_input.startswith(("8701", "8704", "8705", "8706", "8709")): c_mhdv = "9903.74.01"
-                else: c_mhdv = "9903.74.08"
-                l_mhdv = "Sec 232 (MHDV/Buses)"
+                c_mhdv = "9903.74.02" if clean_input.startswith("8702") else ("9903.74.01" if clean_input.startswith(("8701", "8704", "8705", "8706", "8709")) else "9903.74.08")
+                check_list.append((r_mhdv, "Sec 232 (MHDV/Buses)", c_mhdv))
 
-            sec232_matches = []
-            for r, l, c in [(r_auto, l_auto, c_auto), (r_mhdv, l_mhdv, c_mhdv), (r_semi, l_semi, c_semi), (r_timber, l_timber, c_timber)]:
-                if r > 0: sec232_matches.append((r, l, c))
+            for idx, (res_r, res_lb, res_cd) in enumerate(check_list):
+                if res_r > 0:
+                    ans_sp = st.radio(f"Is this subject to {res_lb} ({res_r}%)?", ["No", "Yes"], index=0, horizontal=True, key=f"s232_sp_{idx}")
+                    if ans_sp == "Yes":
+                        s232_results.append({"label": res_lb, "rate": res_r, "code": res_cd, "is_subject": True})
+                        st.warning(f"⚠️ **Sec 232:** {res_lb} logic applied ({res_r}%).")
 
-            if sec232_matches:
-                st.markdown("<div class='questionnaire-header'>🏗️ Section 232 Applicability Check</div>", unsafe_allow_html=True)
+            # 2. METAL ARTICLES (MASTER REBUILD)
+            subdivs = get_hts_subdivisions(clean_input)
+            if subdivs:
+                st.markdown("<div class='questionnaire-header'>🏗️ Section 232 Metal Assessment</div>", unsafe_allow_html=True)
                 
-                for idx, (r, l, c) in enumerate(sec232_matches):
-                    ans = st.radio(f"Subject to {l} ({r}%)?", ["No", "Yes"], index=0, horizontal=True, key=f"s232_{idx}")
-                    
-                    s232_results.append({
-                        "label": l, "rate": r if ans == "Yes" else 0.0, "base_rate": r, 
-                        "code": c if ans == "Yes" else EXEMPT_CODES_232.get(l, "EXEMPT"),
-                        "is_subject": ans == "Yes"
-                    })
-            
-            # --- ANNEX 232 AUTOMATIC CHECKS ---
-            match_annex_2 = check_db_match(df_232_2, clean_input)
-            match_annex_3 = check_db_match(df_232_3, clean_input)
-            match_annex_1a = check_db_match(df_232_1a, clean_input)
-            match_annex_1b = check_db_match(df_232_1b, clean_input)
-            
-            if not match_annex_2.empty:
-                st.success("✅ **Sec 232:** Exempt under Annex II (Removed from Scope).")
-            else:
-                if not match_annex_3.empty:
-                    s232_results.append({
-                        "label": "Sec 232 (Annex III)", "rate": 10.0, "base_rate": 10.0, 
-                        "code": "9903.85.67", "is_subject": True
-                    })
-                    st.info("ℹ️ **Sec 232:** Subject to Annex III Temporary Reduction (10%).")
-                elif not match_annex_1a.empty or not match_annex_1b.empty:
-                    is_1a = not match_annex_1a.empty
-                    is_derivative = not is_1a
-                    is_copper = clean_input.startswith("74")
-                    
-                    st.markdown("<div class='questionnaire-header'>🏭 Annex Metal Check (Code 9903.82.xx series)</div>", unsafe_allow_html=True)
-                    
-                    ans_wt = "Yes"
-                    needs_weight_check = not clean_input.startswith(("72", "73", "74", "76"))
-                    if needs_weight_check:
-                        ans_wt = st.radio("Is the applicable metal at least 15% of the total article weight?", ["No", "Yes"], index=0, horizontal=True, key="wt_check")
-                    
-                    apply_tariff = True
-                    rate_val = 50.0
-                    code_val = "9903.82.02"
-                    label = f"Sec 232 ({'Deriv' if is_derivative else 'Non-Deriv'})"
-                    
-                    if ans_wt == "No":
-                        apply_tariff = False
-                        code_val = "9903.82.03"
-                        rate_val = 0.0
-                        s232_results.append({"label": label, "rate": rate_val, "base_rate": rate_val, "code": code_val, "is_subject": True})
-                        st.success("✅ **Sec 232:** Exempted (9903.82.03) because applicable metal < 15%.")
-                    
-                    if apply_tariff and clean_input.startswith(("84", "85", "87")):
-                        ans_moto = st.radio("Is this for US motorcycle manufacturing?", ["No", "Yes"], index=0, horizontal=True, key="moto_check")
+                is_article = any(s in ['i', 'iii', 'v'] for s in subdivs)
+                is_derivative = any(s in ['ii', 'iv', 'vi', 'vii', 'viii', 'ix', 'x'] for s in subdivs)
+                is_aluminum = any(s in ['i', 'ii', 'vi', 'ix'] for s in subdivs) or clean_input.startswith("76")
+                is_steel = any(s in ['iii', 'iv', 'vii', 'x'] for s in subdivs) or clean_input.startswith(("72", "73"))
+                is_copper = any(s in ['v', 'viii'] for s in subdivs) or clean_input.startswith("74")
+                
+                can_use_deminimis = not clean_input.startswith(("72", "73", "74", "76"))
+                if iso_code == "RU" and is_aluminum: can_use_deminimis = False
+                
+                ans_wt = "Yes"
+                if can_use_deminimis:
+                    ans_wt = st.radio("Is aggregate steel/aluminum/copper weight at least 15%?", ["No", "Yes"], index=1, horizontal=True, key="s232_wt")
+                
+                if ans_wt == "No":
+                    s232_results.append({"label": "Sec 232 De Minimis", "rate": 0.0, "code": "9903.82.03", "is_subject": True})
+                    st.success("✅ **Sec 232:** Exempt (9903.82.03) - Metal < 15%.")
+                else:
+                    is_moto_hts = clean_input.startswith(("84", "85", "87"))
+                    proceed_to_cores = True
+                    if is_moto_hts and any(s in ['vi', 'vii', 'viii'] for s in subdivs):
+                        ans_moto = st.radio("For US motorcycle manufacturing?", ["No", "Yes"], index=0, horizontal=True, key="s232_moto")
                         if ans_moto == "Yes":
-                            apply_tariff = False
-                            code_val = "9903.82.13"
-                            rate_val = 0.0
-                            s232_results.append({"label": label, "rate": rate_val, "base_rate": rate_val, "code": code_val, "is_subject": True})
-                            st.success("✅ **Sec 232:** Exempted (9903.82.13) for US motorcycle manufacturing.")
+                            s232_results.append({"label": "Sec 232 (Motorcycle)", "rate": 0.0, "code": "9903.82.13", "is_subject": True})
+                            proceed_to_cores = False
+                    
+                    if proceed_to_cores:
+                        rate_val, code_val = 0.0, ""
+                        label = f"Sec 232 ({'Article' if is_article else 'Derivative'})"
 
-                    if apply_tariff:
                         if iso_code == "RU":
-                            ru_options = [
-                                "9903.82.14 - Russia steel/copper (50%)",
-                                "9903.82.15 - Russia copper + derivative steel (10%)",
-                                "9903.82.16 - Russia copper + derivative steel (25%)",
-                                "9903.82.17 - Russia derivative steel (25%)"
-                            ]
-                            ru_choice = st.selectbox("Select Russia Exception Code", ru_options)
-                            code_val = ru_choice.split(" - ")[0].strip()
-                            rate_val = float(ru_choice.split("(")[1].split("%")[0])
+                            if is_aluminum:
+                                code_val = "9903.85.68" if is_derivative else "9903.85.67"
+                                rate_val = 200.0
+                            else:
+                                ru_opts = []
+                                if any(s in ['iii', 'iv', 'v'] for s in subdivs): ru_opts.append("9903.82.14 - Articles (50%)")
+                                if any(s in ['iv', 'vii', 'viii'] for s in subdivs): 
+                                    ru_opts.append("9903.82.15 - Copper/Deriv Steel (10%)")
+                                    ru_opts.append("9903.82.16 - Copper/Deriv Steel (25%)")
+                                if 'x' in subdivs: ru_opts.append("9903.82.17 - Russian Deriv Steel (25%)")
+                                
+                                code_val, rate_val = "9903.82.14", 50.0
+                                if ru_opts:
+                                    ru_choice = st.selectbox("Select Russia Provision", ru_opts)
+                                    code_val = ru_choice.split(" - ")[0]
+                                    rate_val = float(ru_choice.split("(")[1].replace("%)", ""))
                         else:
                             metal_opts = ["None / Other Metal Origin", "95% US Metal"]
-                            if iso_code == "GB":
-                                metal_opts.append("95% UK Metal")
-                            
-                            metal_origin = st.radio("Qualifying Metal Origin", metal_opts, index=0, horizontal=True)
-                            
-                            if metal_origin == "95% UK Metal":
-                                if is_derivative:
-                                    code_val = "9903.82.05"
-                                    rate_val = 15.0
-                                else:
-                                    code_val = "9903.82.04"
-                                    rate_val = 25.0
-                            elif metal_origin == "95% US Metal":
-                                if is_copper:
-                                    code_val = "9903.82.06"
-                                    rate_val = 10.0
-                                elif is_derivative:
-                                    ans_06 = st.radio("Qualifies for 9903.82.06 (Copper/Deriv 10%)?", ["No", "Yes"], index=0, horizontal=True, key="q06_check")
-                                    if ans_06 == "Yes":
-                                        code_val = "9903.82.06"
-                                        rate_val = 10.0
-                                    else:
-                                        if parsed_rate < 10.0:
-                                            code_val = "9903.82.07"
-                                            rate_val = max(10.0 - parsed_rate, 0.0)
-                                        else:
-                                            code_val = "9903.82.08"
-                                            rate_val = 0.0
-                                else:
-                                    code_val = "9903.82.02"
-                                    rate_val = 50.0
-                            else: # None / Other Metal Origin
-                                if is_1a:
-                                    code_val = "9903.82.02"
-                                    rate_val = 50.0
-                                elif is_derivative:
-                                    code_val = "9903.82.09"
-                                    rate_val = 25.0
-                                else:
-                                    # Fallback for copper articles that are neither 1a nor 1b
-                                    code_val = "9903.82.02"
-                                    rate_val = 50.0
-                                    
-                        s232_results.append({
-                            "label": label, "rate": rate_val, "base_rate": rate_val, 
-                            "code": code_val, "is_subject": True
-                        })
+                            if iso_code == "GB": metal_opts.append("95% UK Metal")
+                            metal_src = st.radio("Qualifying Metal Processing", metal_opts, index=0, horizontal=True)
+
+                            if metal_src == "95% UK Metal":
+                                if any(s in ['i', 'ii', 'iii', 'iv'] for s in subdivs): code_val, rate_val = "9903.82.04", 25.0
+                                elif any(s in ['vi', 'vii'] for s in subdivs): code_val, rate_val = "9903.82.05", 15.0
+                                else: code_val, rate_val = "9903.82.04", 25.0
+                            elif metal_src == "95% US Metal":
+                                if any(s in ['ix', 'x'] for s in subdivs):
+                                    if parsed_rate < 10.0: code_val, rate_val = "9903.82.07", max(10.0 - parsed_rate, 0.0)
+                                    else: code_val, rate_val = "9903.82.08", 0.0
+                                else: code_val, rate_val = "9903.82.06", 10.0
+                            else:
+                                if is_article: code_val, rate_val = "9903.82.02", 50.0
+                                elif any(s in ['ix', 'x'] for s in subdivs):
+                                    if parsed_rate < 15.0: code_val, rate_val = "9903.82.10", max(15.0 - parsed_rate, 0.0)
+                                    else: code_val, rate_val = "9903.82.11", 0.0
+                                else: code_val, rate_val = "9903.82.09", 25.0
+
+                        s232_results.append({"label": label, "rate": rate_val, "code": code_val, "is_subject": True})
                         st.warning(f"⚠️ **Sec 232:** Subject to {code_val} {rate_val:.2f}% Tariff!")
 
         has_s232 = any(res["is_subject"] for res in s232_results)
@@ -745,13 +730,14 @@ with right_col:
                     elif s301_rate > 0.0: html += f'<div class="line-item-grid"><div class="col-code">{s301_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #e0e7ff; color: #4f46e5;">Sec 301 China</span></div><div class="col-rate">{s301_rate}%</div><div class="col-val">${s301_val:,.2f}</div></div>'
                 
                 for res in s232_results:
-                    is_active_penalty = res["is_subject"]
-                    if is_active_penalty:
-                        penalty_amt = line_val * (res["base_rate"] / 100.0)
-                        html += f'<div class="line-item-grid"><div class="col-code">{res["code"]}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #e0e7ff; color: #4f46e5;">{res["label"]}</span></div><div class="col-rate">{res["base_rate"]}%</div><div class="col-val">${penalty_amt:,.2f}</div></div>'
+                    is_active_penalty = res.get("is_subject", False)
+                    r_val = res.get("rate", 0.0)
+                    if is_active_penalty and r_val > 0:
+                        penalty_amt = line_val * (r_val / 100.0)
+                        html += f'<div class="line-item-grid"><div class="col-code">{res["code"]}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #e0e7ff; color: #4f46e5;">{res["label"]}</span></div><div class="col-rate">{r_val}%</div><div class="col-val">${penalty_amt:,.2f}</div></div>'
                     else:
-                        exempt_code = EXEMPT_CODES_232.get(res["label"], "EXEMPT")
-                        html += f'<div class="line-item-grid"><div class="col-code">{exempt_code}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #dcfce7; color: #166534;">{res["label"]} (EXEMPT)</span></div><div class="col-rate">Free</div><div class="col-val">$0.00</div></div>'
+                        code_lbl = res.get("code", "EXEMPT")
+                        html += f'<div class="line-item-grid"><div class="col-code">{code_lbl}</div><div class="col-desc"><span class="line-item-tag" style="background-color: #dcfce7; color: #166534;">{res["label"]} (EXEMPT)</span></div><div class="col-rate">Free</div><div class="col-val">$0.00</div></div>'
                 
                 # SECTION 122 7501 LOGIC
                 if has_s232:
